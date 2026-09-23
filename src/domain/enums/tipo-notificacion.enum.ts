@@ -1,0 +1,4 @@
+export enum TipoNotificacion {
+  REUNIFICACION = 'REUNIFICACION',
+  LECTURA_PORTICO = 'LECTURA_PORTICO',
+}

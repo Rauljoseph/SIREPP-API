@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoUnidad {
+  COMISARIA
+  SUBCOMISARIA
+  TENENCIA
+  RETEN
+}
+
+enum Rol {
+  GUARDIA
+  SUPERVISOR
+  CONSULTA
+  ADMINISTRADOR
+}
+
+enum TipoEvento {
+  EXTRAVIO
+  ROBO
+  HURTO
+}
+
+enum EstadoEncargo {
+  VIGENTE
+  REUNIFICADO
+  CERRADO
+  ANULADO
+  EXPIRADO
+}
+
+enum EstadoFisico {
+  BUENO
+  DETERIORADO
+  ILEGIBLE
+}
+
+enum EstadoReunificacion {
+  PENDIENTE_RETIRO
+  ENTREGADA
+  EXPIRADA
+}
+
+enum TipoNotificacion {
+  REUNIFICACION
+  LECTURA_PORTICO
+}
+
+enum EstadoNotificacion {
+  PENDIENTE
+  ENVIADA
+  FALLIDA
+}
+
+enum TipoEventoDominio {
+  PLACA_ENCARGADA
+  PLACA_HALLADA
+  PLACA_REUNIFICADA
+  PLACA_LEIDA
+  CASO_CERRADO
+  ENCARGO_ANULADO
+}
+
+model Unidad {
+  id               String      @id @default(uuid()) @db.Uuid
+  nombre           String      @db.VarChar(200)
+  tipo             TipoUnidad
+  direccion        String      @db.VarChar(400)
+  region           String      @db.VarChar(100)
+  comuna           String      @db.VarChar(100)
+  horarioAtencion  String?     @map("horario_atencion") @db.VarChar(200)
+  telefono         String?     @db.VarChar(20)
+  activa           Boolean     @default(true)
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+
+  usuarios         Usuario[]
+  encargos         Encargo[]
+  hallazgos        Hallazgo[]
+
+  @@map("unidad")
+}
+
+model Usuario {
+  id              String    @id @default(uuid()) @db.Uuid
+  keycloakSub     String    @unique @map("keycloak_sub") @db.VarChar(255)
+  nombreCompleto  String    @map("nombre_completo") @db.VarChar(200)
+  email           String    @db.VarChar(254)
+  rol             Rol
+  unidadId        String    @map("unidad_id") @db.Uuid
+  servicioActivo  Boolean   @default(true) @map("servicio_activo")
+  ultimoAcceso    DateTime? @map("ultimo_acceso")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  unidad          Unidad    @relation(fields: [unidadId], references: [id])
+
+  encargosRegistrados     Encargo[]        @relation("encargo_funcionario")
+  encargosAnulados        Encargo[]        @relation("encargo_anulado_por")
+  hallazgosRegistrados    Hallazgo[]
+  reunificacionesEntrega  Reunificacion[]
+  auditLogs               AuditLog[]
+
+  @@index([keycloakSub])
+  @@map("usuario")
+}
+
+model Encargo {
+  id                       String         @id @default(uuid()) @db.Uuid
+  placa                    String         @db.VarChar(10)
+  tipoEvento               TipoEvento     @map("tipo_evento")
+  estado                   EstadoEncargo  @default(VIGENTE)
+  denuncianteRutCifrado    String         @map("denunciante_rut_cifrado") @db.VarChar(500)
+  denuncianteNombreCifrado String         @map("denunciante_nombre_cifrado") @db.VarChar(500)
+  denuncianteEmailCifrado  String         @map("denunciante_email_cifrado") @db.VarChar(500)
+  canalNotificacion        String         @map("canal_notificacion") @db.VarChar(50)
+  constanciaNumero         String?        @map("constancia_numero") @db.VarChar(50)
+  fechaHecho               DateTime       @map("fecha_hecho") @db.Date
+  observaciones            String?        @db.Text
+  unidadId                 String         @map("unidad_id") @db.Uuid
+  funcionarioId            String         @map("funcionario_id") @db.Uuid
+  anuladoPor               String?        @map("anulado_por") @db.Uuid
+  motivoAnulacion          String?        @map("motivo_anulacion") @db.VarChar(500)
+  createdAt                DateTime       @default(now()) @map("created_at")
+  updatedAt                DateTime       @updatedAt @map("updated_at")
+
+  unidad                   Unidad         @relation(fields: [unidadId], references: [id])
+  funcionario              Usuario        @relation("encargo_funcionario", fields: [funcionarioId], references: [id])
+  funcionarioAnulacion     Usuario?       @relation("encargo_anulado_por", fields: [anuladoPor], references: [id])
+
+  reunificacion            Reunificacion?
+  eventosLectura           EventoLectura[]
+
+  @@index([placa])
+  @@index([estado])
+  @@index([unidadId])
+  @@map("encargo")
+}
+
+model Hallazgo {
+  id              String        @id @default(uuid()) @db.Uuid
+  placa           String        @db.VarChar(10)
+  estadoFisico    EstadoFisico  @map("estado_fisico")
+  observaciones   String?       @db.Text
+  unidadId        String        @map("unidad_id") @db.Uuid
+  funcionarioId   String        @map("funcionario_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  unidad          Unidad        @relation(fields: [unidadId], references: [id])
+  funcionario     Usuario       @relation(fields: [funcionarioId], references: [id])
+
+  reunificacion   Reunificacion?
+
+  @@index([placa])
+  @@index([unidadId])
+  @@map("hallazgo")
+}
+
+model Reunificacion {
+  id                      String                @id @default(uuid()) @db.Uuid
+  encargoId               String                @unique @map("encargo_id") @db.Uuid
+  hallazgoId              String                @unique @map("hallazgo_id") @db.Uuid
+  estado                  EstadoReunificacion   @default(PENDIENTE_RETIRO)
+  fechaConciliacion       DateTime              @default(now()) @map("fecha_conciliacion")
+  fechaEntrega            DateTime?             @map("fecha_entrega")
+  funcionarioEntregaId    String?               @map("funcionario_entrega_id") @db.Uuid
+  receptorRutCifrado      String?               @map("receptor_rut_cifrado") @db.VarChar(500)
+  receptorNombreCifrado   String?               @map("receptor_nombre_cifrado") @db.VarChar(500)
+  createdAt               DateTime              @default(now()) @map("created_at")
+  updatedAt               DateTime              @updatedAt @map("updated_at")
+
+  encargo                 Encargo               @relation(fields: [encargoId], references: [id])
+  hallazgo                Hallazgo              @relation(fields: [hallazgoId], references: [id])
+  funcionarioEntrega      Usuario?              @relation(fields: [funcionarioEntregaId], references: [id])
+
+  notificaciones          Notificacion[]
+
+  @@map("reunificacion")
+}
+
+model Notificacion {
+  id                       String              @id @default(uuid()) @db.Uuid
+  reunificacionId          String?             @map("reunificacion_id") @db.Uuid
+  eventoLecturaId          String?             @unique @map("evento_lectura_id") @db.Uuid
+  tipo                     TipoNotificacion
+  destinatarioEmailCifrado String              @map("destinatario_email_cifrado") @db.VarChar(500)
+  estado                   EstadoNotificacion  @default(PENDIENTE)
+  intentos                 Int                 @default(0)
+  ultimoIntentoAt          DateTime?           @map("ultimo_intento_at")
+  resultado                String?             @db.Text
+  messageId                String?             @map("message_id") @db.VarChar(200)
+  createdAt                DateTime            @default(now()) @map("created_at")
+
+  reunificacion            Reunificacion?      @relation(fields: [reunificacionId], references: [id])
+  eventoLectura            EventoLectura?      @relation(fields: [eventoLecturaId], references: [id])
+
+  @@index([estado])
+  @@index([reunificacionId])
+  @@map("notificacion")
+}
+
+model EventoLectura {
+  id                String        @id @default(uuid()) @db.Uuid
+  placa             String        @db.VarChar(10)
+  portico           String        @db.VarChar(100)
+  nivelConfianza    Float         @map("nivel_confianza")
+  encargoId         String        @map("encargo_id") @db.Uuid
+  notificado        Boolean       @default(false)
+  timestampLectura  DateTime      @map("timestamp_lectura")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  encargo           Encargo       @relation(fields: [encargoId], references: [id])
+  notificacion      Notificacion?
+
+  @@index([placa])
+  @@index([encargoId])
+  @@map("evento_lectura")
+}
+
+model EventoDominio {
+  id        Int                @id @default(autoincrement())
+  tipo      TipoEventoDominio
+  payload   Json               @db.JsonB
+  procesado Boolean            @default(false)
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  @@index([procesado, createdAt])
+  @@map("evento_dominio")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  usuarioId  String   @map("usuario_id") @db.Uuid
+  accion     String   @db.VarChar(20)
+  entidad    String   @db.VarChar(50)
+  entidadId  String?  @map("entidad_id") @db.Uuid
+  detalle    Json?    @db.JsonB
+  ip         String   @db.Inet
+  userAgent  String?  @map("user_agent") @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  usuario    Usuario  @relation(fields: [usuarioId], references: [id])
+
+  @@index([usuarioId])
+  @@index([entidad, entidadId])
+  @@index([createdAt])
+  @@map("audit_log")
+}

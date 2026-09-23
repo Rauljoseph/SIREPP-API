@@ -1,0 +1,6 @@
+export enum TipoUnidad {
+  COMISARIA = 'COMISARIA',
+  SUBCOMISARIA = 'SUBCOMISARIA',
+  TENENCIA = 'TENENCIA',
+  RETEN = 'RETEN',
+}

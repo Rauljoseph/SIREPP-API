@@ -1,0 +1,7 @@
+export enum EstadoEncargo {
+  VIGENTE = 'VIGENTE',
+  REUNIFICADO = 'REUNIFICADO',
+  CERRADO = 'CERRADO',
+  ANULADO = 'ANULADO',
+  EXPIRADO = 'EXPIRADO',
+}

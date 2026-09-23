@@ -1,0 +1,5 @@
+export enum EstadoReunificacion {
+  PENDIENTE_RETIRO = 'PENDIENTE_RETIRO',
+  ENTREGADA = 'ENTREGADA',
+  EXPIRADA = 'EXPIRADA',
+}
