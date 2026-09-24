@@ -79,12 +79,6 @@ const adapters = [
 
 const useCases = [
   {
-    provide: RegistrarEncargoUseCase,
-    useFactory: (encargoRepo, eventoRepo, vehiculoRegistry) =>
-      new RegistrarEncargoUseCase(encargoRepo, eventoRepo, vehiculoRegistry),
-    inject: [ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, VEHICULO_REGISTRY],
-  },
-  {
     provide: AnularEncargoUseCase,
     useFactory: (encargoRepo, eventoRepo) =>
       new AnularEncargoUseCase(encargoRepo, eventoRepo),
@@ -95,12 +89,6 @@ const useCases = [
     useFactory: (encargoRepo) =>
       new ConsultarEncargoUseCase(encargoRepo),
     inject: [ENCARGO_REPOSITORY],
-  },
-  {
-    provide: RegistrarHallazgoUseCase,
-    useFactory: (hallazgoRepo, eventoRepo) =>
-      new RegistrarHallazgoUseCase(hallazgoRepo, eventoRepo),
-    inject: [HALLAZGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY],
   },
   {
     provide: ConsultarHallazgoUseCase,
@@ -148,6 +136,31 @@ const useCases = [
     provide: ConsultarUnidadUseCase,
     useFactory: (unidadRepo) => new ConsultarUnidadUseCase(unidadRepo),
     inject: [UNIDAD_REPOSITORY],
+  },
+  {
+    provide: RegistrarEncargoUseCase,
+    useFactory: (encargoRepo, eventoRepo, vehiculoRegistry, conciliar, notificar, hallazgoRepo, unidadRepo) =>
+      new RegistrarEncargoUseCase(encargoRepo, eventoRepo, vehiculoRegistry, conciliar, notificar, hallazgoRepo, unidadRepo),
+    inject: [
+      ENCARGO_REPOSITORY,
+      EVENTO_DOMINIO_REPOSITORY,
+      VEHICULO_REGISTRY,
+      ConciliarPlacaUseCase,
+      EnviarNotificacionReunificacionUseCase,
+      HALLAZGO_REPOSITORY,
+      UNIDAD_REPOSITORY,
+    ],
+  },
+  {
+    provide: RegistrarHallazgoUseCase,
+    useFactory: (hallazgoRepo, eventoRepo, conciliar, notificar) =>
+      new RegistrarHallazgoUseCase(hallazgoRepo, eventoRepo, conciliar, notificar),
+    inject: [
+      HALLAZGO_REPOSITORY,
+      EVENTO_DOMINIO_REPOSITORY,
+      ConciliarPlacaUseCase,
+      EnviarNotificacionReunificacionUseCase,
+    ],
   },
 ];
 
