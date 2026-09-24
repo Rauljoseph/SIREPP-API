@@ -15,7 +15,7 @@ export class EventoDominioPrismaRepository implements EventoDominioRepository {
     const created = await this.prisma.eventoDominio.create({
       data: {
         tipo: evento.tipo,
-        payload: evento.payload,
+        payload: evento.payload as any,
         procesado: evento.procesado,
       },
     });

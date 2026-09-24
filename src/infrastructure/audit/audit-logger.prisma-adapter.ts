@@ -14,7 +14,7 @@ export class AuditLoggerPrismaAdapter implements AuditLoggerPort {
         accion: log.accion,
         entidad: log.entidad,
         entidadId: log.entidadId,
-        detalle: log.detalle ?? undefined,
+        detalle: (log.detalle ?? undefined) as any,
         ip: log.ip,
         userAgent: log.userAgent,
       },
