@@ -8,3 +8,4 @@ export * from './audit-logger.port';
 export * from './event-publisher.port';
 export * from './vehiculo-registry.port';
 export * from './mail-sender.port';
+export * from './unidad.repository';

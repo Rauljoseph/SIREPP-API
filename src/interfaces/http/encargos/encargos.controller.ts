@@ -13,9 +13,11 @@ import {
   RegistrarEncargoUseCase,
   AnularEncargoUseCase,
   ConsultarEncargoUseCase,
+  ConciliarPlacaUseCase,
+  EnviarNotificacionReunificacionUseCase,
+  ConsultarHallazgoUseCase,
+  ConsultarUnidadUseCase,
 } from '../../../application';
-import { ConciliarPlacaUseCase } from '../../../application';
-import { EnviarNotificacionReunificacionUseCase } from '../../../application';
 import { CrearEncargoDto } from './dto/crear-encargo.dto';
 import { AnularEncargoDto } from './dto/anular-encargo.dto';
 
@@ -28,6 +30,8 @@ export class EncargosController {
     private readonly consultarEncargo: ConsultarEncargoUseCase,
     private readonly conciliarPlaca: ConciliarPlacaUseCase,
     private readonly enviarNotificacion: EnviarNotificacionReunificacionUseCase,
+    private readonly consultarHallazgo: ConsultarHallazgoUseCase,
+    private readonly consultarUnidad: ConsultarUnidadUseCase,
   ) {}
 
   @Post()
@@ -37,7 +41,6 @@ export class EncargosController {
   @ApiResponse({ status: 400, description: 'Datos inválidos o placa no existe' })
   @ApiResponse({ status: 409, description: 'Ya existe un encargo vigente para esta placa' })
   async crear(@Body() dto: CrearEncargoDto) {
-    // TODO: extraer funcionarioId del JWT cuando Keycloak esté integrado
     const funcionarioId = '00000000-0000-0000-0000-000000000000';
 
     const resultado = await this.registrarEncargo.ejecutar({
@@ -60,21 +63,43 @@ export class EncargosController {
       placa: resultado.encargo.placa,
     });
 
-    // Si se concilió, notificar
+    // Si se concilió, notificar y buscar dónde está la placa
+    let conciliacionResponse: any = null;
     if (conciliacion.conciliada && conciliacion.reunificacion) {
       await this.enviarNotificacion.ejecutar({
         reunificacionId: conciliacion.reunificacion.id,
       });
+
+      const hallazgo = await this.consultarHallazgo.porId(
+        conciliacion.reunificacion.hallazgoId,
+      );
+      const unidadCustodia = await this.consultarUnidad.porId(hallazgo.unidadId);
+
+      conciliacionResponse = {
+        reunificacionId: conciliacion.reunificacion.id,
+        mensaje:
+          'Esta placa ya fue encontrada y se encuentra disponible para retiro.',
+        hallazgo: {
+          id: hallazgo.id,
+          estadoFisico: hallazgo.estadoFisico,
+          fechaHallazgo: hallazgo.createdAt,
+        },
+        unidadCustodia: unidadCustodia
+          ? {
+            nombre: unidadCustodia.nombre,
+            direccion: unidadCustodia.direccion,
+            comuna: unidadCustodia.comuna,
+            region: unidadCustodia.region,
+            horarioAtencion: unidadCustodia.horarioAtencion,
+            telefono: unidadCustodia.telefono,
+          }
+          : null,
+      };
     }
 
     return {
       encargo: this.mapearEncargo(resultado.encargo),
-      conciliacion: conciliacion.conciliada
-        ? {
-          reunificacionId: conciliacion.reunificacion!.id,
-          mensaje: 'Se encontró un hallazgo previo. La placa fue reunificada automáticamente.',
-        }
-        : null,
+      conciliacion: conciliacionResponse,
     };
   }
 
@@ -100,7 +125,6 @@ export class EncargosController {
   @ApiResponse({ status: 200, description: 'Encargo anulado' })
   @ApiResponse({ status: 404, description: 'Encargo no encontrado' })
   async anular(@Param('id') id: string, @Body() dto: AnularEncargoDto) {
-    // TODO: extraer supervisorId del JWT
     const supervisorId = '00000000-0000-0000-0000-000000000000';
 
     const encargo = await this.anularEncargo.ejecutar({
@@ -125,7 +149,6 @@ export class EncargosController {
       unidadId: encargo.unidadId,
       funcionarioId: encargo.funcionarioId,
       createdAt: encargo.createdAt,
-      // Datos personales NO se exponen en la respuesta
     };
   }
 }

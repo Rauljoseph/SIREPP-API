@@ -14,6 +14,9 @@ import { ReunificacionMapper } from './persistence/mappers/reunificacion.mapper'
 import { NotificacionMapper } from './persistence/mappers/notificacion.mapper';
 import { EventoLecturaMapper } from './persistence/mappers/evento-lectura.mapper';
 import { EventoDominioMapper } from './persistence/mappers/evento-dominio.mapper';
+import { UnidadMapper } from './persistence/mappers/unidad.mapper';
+import { UNIDAD_REPOSITORY } from '../domain/ports';
+import { ConsultarUnidadUseCase } from '../application';
 
 // Repositories
 import { EncargoPrismaRepository } from './persistence/encargo.prisma-repository';
@@ -22,6 +25,8 @@ import { ReunificacionPrismaRepository } from './persistence/reunificacion.prism
 import { NotificacionPrismaRepository } from './persistence/notificacion.prisma-repository';
 import { EventoLecturaPrismaRepository } from './persistence/evento-lectura.prisma-repository';
 import { EventoDominioPrismaRepository } from './persistence/evento-dominio.prisma-repository';
+import { UnidadPrismaRepository } from './persistence/unidad.prisma-repository';
+
 
 // Adapters
 import { AuditLoggerPrismaAdapter } from './audit/audit-logger.prisma-adapter';
@@ -63,6 +68,7 @@ const repositories = [
   { provide: NOTIFICACION_REPOSITORY, useClass: NotificacionPrismaRepository },
   { provide: EVENTO_LECTURA_REPOSITORY, useClass: EventoLecturaPrismaRepository },
   { provide: EVENTO_DOMINIO_REPOSITORY, useClass: EventoDominioPrismaRepository },
+  { provide: UNIDAD_REPOSITORY, useClass: UnidadPrismaRepository },
 ];
 
 const adapters = [
@@ -138,6 +144,11 @@ const useCases = [
       new ConsultarEstadoPlacaUseCase(encargoRepo, hallazgoRepo, reunificacionRepo),
     inject: [ENCARGO_REPOSITORY, HALLAZGO_REPOSITORY, REUNIFICACION_REPOSITORY],
   },
+  {
+    provide: ConsultarUnidadUseCase,
+    useFactory: (unidadRepo) => new ConsultarUnidadUseCase(unidadRepo),
+    inject: [UNIDAD_REPOSITORY],
+  },
 ];
 
 @Module({
@@ -152,6 +163,7 @@ const useCases = [
     NotificacionMapper,
     EventoLecturaMapper,
     EventoDominioMapper,
+    UnidadMapper,
     // Repositories, adapters y use cases
     ...repositories,
     ...adapters,
