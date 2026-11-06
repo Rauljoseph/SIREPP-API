@@ -50,4 +50,14 @@ export class EncargoPrismaRepository implements EncargoRepository {
     });
     return this.mapper.toDomain(updated);
   }
+
+  async buscarVigentesAnterioresA(fecha: Date): Promise<Encargo[]> {
+    const records = await this.prisma.encargo.findMany({
+      where: {
+        estado: 'VIGENTE',
+        createdAt: { lt: fecha },
+      },
+    });
+    return records.map((r) => this.mapper.toDomain(r));
+  }
 }

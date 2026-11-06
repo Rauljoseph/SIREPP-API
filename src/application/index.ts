@@ -9,4 +9,5 @@ export * from './notificaciones/reintentar-notificaciones.use-case';
 export * from './trazabilidad/procesar-lectura.use-case';
 export * from './reunificacion/cerrar-caso.use-case';
 export * from './reunificacion/consultar-estado-placa.use-case';
-export * from './unidades/consultar-unidad.use-case';
+export * from './unidades/consultar-unidad.use-case'
+export * from './encargos/expirar-encargos.use-case';

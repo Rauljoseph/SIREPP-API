@@ -26,6 +26,8 @@ import { NotificacionPrismaRepository } from './persistence/notificacion.prisma-
 import { EventoLecturaPrismaRepository } from './persistence/evento-lectura.prisma-repository';
 import { EventoDominioPrismaRepository } from './persistence/evento-dominio.prisma-repository';
 import { UnidadPrismaRepository } from './persistence/unidad.prisma-repository';
+import { ExpirarEncargosUseCase } from '../application';
+import { EncargoExpirationService } from './scheduler/encargo-expiration-service';
 
 
 // Adapters
@@ -160,7 +162,14 @@ const useCases = [
       EVENTO_DOMINIO_REPOSITORY,
       ConciliarPlacaUseCase,
       EnviarNotificacionReunificacionUseCase,
+
     ],
+  },
+  {
+    provide: ExpirarEncargosUseCase,
+    useFactory: (encargoRepo, eventoRepo) =>
+      new ExpirarEncargosUseCase(encargoRepo, eventoRepo),
+    inject: [ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY],
   },
 ];
 
@@ -181,6 +190,8 @@ const useCases = [
     ...repositories,
     ...adapters,
     ...useCases,
+    // Scheduler
+    EncargoExpirationService,
   ],
   exports: [
     ...repositories.map((r) => r.provide),
