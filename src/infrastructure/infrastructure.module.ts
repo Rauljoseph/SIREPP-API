@@ -15,7 +15,8 @@ import { NotificacionMapper } from './persistence/mappers/notificacion.mapper';
 import { EventoLecturaMapper } from './persistence/mappers/evento-lectura.mapper';
 import { EventoDominioMapper } from './persistence/mappers/evento-dominio.mapper';
 import { UnidadMapper } from './persistence/mappers/unidad.mapper';
-import { UNIDAD_REPOSITORY } from '../domain/ports';
+import { UsuarioMapper } from './persistence/mappers/usuario.mapper';
+import { UNIDAD_REPOSITORY, USUARIO_REPOSITORY } from '../domain/ports';
 import { ConsultarUnidadUseCase } from '../application';
 
 // Repositories
@@ -26,6 +27,7 @@ import { NotificacionPrismaRepository } from './persistence/notificacion.prisma-
 import { EventoLecturaPrismaRepository } from './persistence/evento-lectura.prisma-repository';
 import { EventoDominioPrismaRepository } from './persistence/evento-dominio.prisma-repository';
 import { UnidadPrismaRepository } from './persistence/unidad.prisma-repository';
+import { UsuarioPrismaRepository } from './persistence/usuario.prisma.repository';
 import { ExpirarEncargosUseCase } from '../application';
 import { EncargoExpirationService } from './scheduler/encargo-expiration-service';
 
@@ -71,6 +73,7 @@ const repositories = [
   { provide: EVENTO_LECTURA_REPOSITORY, useClass: EventoLecturaPrismaRepository },
   { provide: EVENTO_DOMINIO_REPOSITORY, useClass: EventoDominioPrismaRepository },
   { provide: UNIDAD_REPOSITORY, useClass: UnidadPrismaRepository },
+  { provide: USUARIO_REPOSITORY, useClass: UsuarioPrismaRepository },
 ];
 
 const adapters = [
@@ -82,9 +85,9 @@ const adapters = [
 const useCases = [
   {
     provide: AnularEncargoUseCase,
-    useFactory: (encargoRepo, eventoRepo) =>
-      new AnularEncargoUseCase(encargoRepo, eventoRepo),
-    inject: [ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY],
+    useFactory: (encargoRepo, eventoRepo, usuarioRepo) =>
+      new AnularEncargoUseCase(encargoRepo, eventoRepo, usuarioRepo),
+    inject: [ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, USUARIO_REPOSITORY],
   },
   {
     provide: ConsultarEncargoUseCase,
@@ -124,9 +127,9 @@ const useCases = [
   },
   {
     provide: CerrarCasoUseCase,
-    useFactory: (reunificacionRepo, encargoRepo, eventoRepo) =>
-      new CerrarCasoUseCase(reunificacionRepo, encargoRepo, eventoRepo),
-    inject: [REUNIFICACION_REPOSITORY, ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY],
+    useFactory: (reunificacionRepo, encargoRepo, eventoRepo, usuarioRepo) =>
+      new CerrarCasoUseCase(reunificacionRepo, encargoRepo, eventoRepo, usuarioRepo),
+    inject: [REUNIFICACION_REPOSITORY, ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, USUARIO_REPOSITORY],
   },
   {
     provide: ConsultarEstadoPlacaUseCase,
@@ -141,8 +144,8 @@ const useCases = [
   },
   {
     provide: RegistrarEncargoUseCase,
-    useFactory: (encargoRepo, eventoRepo, vehiculoRegistry, conciliar, notificar, hallazgoRepo, unidadRepo) =>
-      new RegistrarEncargoUseCase(encargoRepo, eventoRepo, vehiculoRegistry, conciliar, notificar, hallazgoRepo, unidadRepo),
+    useFactory: (encargoRepo, eventoRepo, vehiculoRegistry, conciliar, notificar, hallazgoRepo, unidadRepo, usuarioRepo) =>
+      new RegistrarEncargoUseCase(encargoRepo, eventoRepo, vehiculoRegistry, conciliar, notificar, hallazgoRepo, unidadRepo, usuarioRepo),
     inject: [
       ENCARGO_REPOSITORY,
       EVENTO_DOMINIO_REPOSITORY,
@@ -151,6 +154,7 @@ const useCases = [
       EnviarNotificacionReunificacionUseCase,
       HALLAZGO_REPOSITORY,
       UNIDAD_REPOSITORY,
+      USUARIO_REPOSITORY,
     ],
   },
   {
@@ -186,6 +190,7 @@ const useCases = [
     EventoLecturaMapper,
     EventoDominioMapper,
     UnidadMapper,
+    UsuarioMapper,
     // Repositories, adapters y use cases
     ...repositories,
     ...adapters,

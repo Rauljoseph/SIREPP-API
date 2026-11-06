@@ -11,8 +11,9 @@ import {
   NotificacionRepository,
   MailSenderPort,
   UnidadRepository,
+  UsuarioRepository,
 } from '../../domain/ports';
-import { PlacaInvalidaException } from '../../domain/exceptions';
+import { PlacaInvalidaException, AccesoDenegadoException } from '../../domain/exceptions';
 import { ConciliarPlacaUseCase } from '../conciliacion/conciliar-placa.use-case';
 import { EnviarNotificacionReunificacionUseCase } from '../notificaciones/enviar-notificacion-reunificacion.use-case';
 
@@ -65,10 +66,16 @@ export class RegistrarEncargoUseCase {
     private readonly notificar: EnviarNotificacionReunificacionUseCase,
     private readonly hallazgoRepo: HallazgoRepository,
     private readonly unidadRepo: UnidadRepository,
+    private readonly usuarioRepo: UsuarioRepository,
   ) {}
 
   async ejecutar(input: RegistrarEncargoInput): Promise<RegistrarEncargoOutput> {
-    // 1. Validar formato de placa
+    // 0. Validar permisos del funcionario
+    const funcionario = await this.usuarioRepo.buscarPorId(input.funcionarioId);
+    if (funcionario && !funcionario.puedeRegistrar()) {
+      throw new AccesoDenegadoException('registrar encargos', funcionario.rol);
+    }
+
     if (!Encargo.validarPlaca(input.placa)) {
       throw new PlacaInvalidaException(input.placa);
     }
@@ -79,13 +86,11 @@ export class RegistrarEncargoUseCase {
     //   throw new Error(`La placa ${input.placa} no se encuentra en el registro vehicular`);
     // }
 
-    // 3. Verificar que no haya un encargo vigente
     const encargoExistente = await this.encargoRepo.buscarVigentePorPlaca(input.placa);
     if (encargoExistente) {
       throw new Error(`Ya existe un encargo vigente para la placa ${input.placa}`);
     }
 
-    // 4. Construir y persistir el encargo
     const encargo = Encargo.builder()
       .conId(uuid())
       .conPlaca(input.placa)
@@ -99,7 +104,6 @@ export class RegistrarEncargoUseCase {
 
     const encargoGuardado = await this.encargoRepo.guardar(encargo);
 
-    // 5. Registrar evento de dominio
     const evento = EventoDominio.crear(TipoEventoDominio.PLACA_ENCARGADA, {
       encargoId: encargoGuardado.id,
       placa: encargoGuardado.placa,
@@ -108,7 +112,6 @@ export class RegistrarEncargoUseCase {
     });
     await this.eventoRepo.guardar(evento);
 
-    // 6. Intentar conciliación automática
     const conciliacion = await this.intentarConciliacion(encargoGuardado);
 
     return {

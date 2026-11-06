@@ -9,3 +9,4 @@ export * from './event-publisher.port';
 export * from './vehiculo-registry.port';
 export * from './mail-sender.port';
 export * from './unidad.repository';
+export * from './usuario.repository';

@@ -65,6 +65,7 @@ enum TipoEventoDominio {
   PLACA_LEIDA
   CASO_CERRADO
   ENCARGO_ANULADO
+  ENCARGO_EXPIRADO
 }
 
 model Unidad {
