@@ -39,6 +39,8 @@ export class ConsultaController {
           estado: estado.reunificacion.estado,
           fechaConciliacion: estado.reunificacion.fechaConciliacion,
           fechaEntrega: estado.reunificacion.fechaEntrega,
+          receptorRut: estado.reunificacion.receptorRut,
+          receptorNombre: estado.reunificacion.receptorNombre,
         }
         : null,
     };

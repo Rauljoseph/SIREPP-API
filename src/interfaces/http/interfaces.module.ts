@@ -4,6 +4,7 @@ import { HallazgosModule } from './hallazgos/hallazgos.module';
 import { ReunificacionModule } from './reunificacion/reunificacion.module';
 import { ConsultaModule } from './consulta/consulta.module';
 import { TrazabilidadModule } from './trazabilidad/trazabilidad.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -12,6 +13,7 @@ import { TrazabilidadModule } from './trazabilidad/trazabilidad.module';
     ReunificacionModule,
     ConsultaModule,
     TrazabilidadModule,
+    DashboardModule
   ],
 })
 export class InterfacesModule {}

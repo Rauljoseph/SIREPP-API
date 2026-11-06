@@ -9,8 +9,8 @@ import {
 export class PlacaChilenaConstraint implements ValidatorConstraintInterface {
   validate(value: string): boolean {
     if (!value) return false;
-    const normalizada = value.toUpperCase().replace(/[-\s]/g, '');
-    return /^[A-Z]{2,4}\d{2,4}$/.test(normalizada);
+    const normalizada = value.toUpperCase().replace(/[-\s·]/g, '');
+    return /^[A-Z]{4}\d{2}$/.test(normalizada) || /^[A-Z]{2}\d{4}$/.test(normalizada);
   }
 
   defaultMessage(): string {

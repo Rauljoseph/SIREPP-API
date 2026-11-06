@@ -74,10 +74,10 @@ export class RegistrarEncargoUseCase {
     }
 
     // 2. Validar que la placa exista en el registro vehicular
-    const existe = await this.vehiculoRegistry.existePlaca(input.placa);
-    if (!existe) {
-      throw new PlacaInvalidaException(input.placa);
-    }
+    // const existe = await this.vehiculoRegistry.existePlaca(input.placa);
+    // if (!existe) {
+    //   throw new Error(`La placa ${input.placa} no se encuentra en el registro vehicular`);
+    // }
 
     // 3. Verificar que no haya un encargo vigente
     const encargoExistente = await this.encargoRepo.buscarVigentePorPlaca(input.placa);

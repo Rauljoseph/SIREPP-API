@@ -92,9 +92,10 @@ export class Encargo {
   }
 
   static validarPlaca(placa: string): boolean {
-    // Formato chileno: BBBB-12, BB-BB-12, o variantes
-    const patron = /^[A-Z]{2,4}[-]?\d{2,4}$/;
-    return patron.test(placa.toUpperCase().replace(/\s/g, ''));
+    const normalizada = placa.toUpperCase().replace(/[-\s·]/g, '');
+    // Formato actual: 4 letras + 2 dígitos (BBCC12)
+    // Formato antiguo: 2 letras + 4 dígitos (XX1234)
+    return /^[A-Z]{4}\d{2}$/.test(normalizada) || /^[A-Z]{2}\d{4}$/.test(normalizada);
   }
 
   // ── Builder ──────────────────────────────────────────────
