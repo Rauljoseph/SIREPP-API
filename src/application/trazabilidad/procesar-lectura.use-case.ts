@@ -20,6 +20,7 @@ export interface ProcesarLecturaOutput {
   registrada: boolean;
   notificada: boolean;
   motivo?: string;
+  eventoLectura?: EventoLectura;
 }
 
 export class ProcesarLecturaUseCase {
@@ -69,10 +70,11 @@ export class ProcesarLecturaUseCase {
         registrada: true,
         notificada: false,
         motivo: `Confianza ${input.nivelConfianza} bajo umbral ${this.UMBRAL_CONFIANZA}`,
+        eventoLectura: guardado,
       };
     }
 
-    // Notificar al propietario (como indicio, no como certeza)
+    // Notificar al denunciante (hasta 3 intentos automáticos)
     try {
       const notificacion = Notificacion.builder()
         .conId(uuid())
@@ -82,18 +84,44 @@ export class ProcesarLecturaUseCase {
 
       const notifGuardada = await this.notificacionRepo.guardar(notificacion);
 
-      const resultado = await this.mailSender.enviar({
-        destinatario: encargo.denuncianteEmail,
-        asunto: 'SIREPP — Posible avistamiento de su placa patente',
-        cuerpo: this.componerCuerpo(input.placa, input.portico, input.timestampLectura),
-      });
+      let notificacionActual = notifGuardada;
+      for (let intento = 1; intento <= 3; intento++) {
+        try {
+          const resultado = await this.mailSender.enviar({
+            destinatario: encargo.denuncianteEmail,
+            asunto: 'SIREPP — Posible avistamiento de su placa patente',
+            cuerpo: this.componerCuerpo(input.placa, input.portico, input.timestampLectura),
+          });
 
-      const enviada = notifGuardada.marcarEnviada(resultado.messageId);
-      await this.notificacionRepo.actualizar(enviada);
+          const enviada = notificacionActual.marcarEnviada(resultado.messageId);
+          await this.notificacionRepo.actualizar(enviada);
 
-      return { registrada: true, notificada: true };
+          return { registrada: true, notificada: true, eventoLectura: guardado.marcarNotificado() };
+        } catch (error) {
+          const mensaje = error instanceof Error ? error.message : 'Error desconocido';
+          notificacionActual = notificacionActual.marcarFallida(mensaje);
+          notificacionActual = await this.notificacionRepo.actualizar(notificacionActual);
+
+          if (intento < 3) {
+            await new Promise((resolve) => setTimeout(resolve, intento * 1000));
+          }
+        }
+      }
+
+      // 3 intentos fallidos → queda como FALLIDA para reintento manual
+      return {
+        registrada: true,
+        notificada: false,
+        motivo: 'Error al enviar notificación tras 3 intentos',
+        eventoLectura: guardado,
+      };
     } catch {
-      return { registrada: true, notificada: false, motivo: 'Error al enviar notificación' };
+      return {
+        registrada: true,
+        notificada: false,
+        motivo: 'Error al crear notificación',
+        eventoLectura: guardado,
+      };
     }
   }
 

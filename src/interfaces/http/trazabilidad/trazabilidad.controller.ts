@@ -18,7 +18,7 @@ export class TrazabilidadController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Recibir una lectura de pórtico (desde el simulador)' })
+  @ApiOperation({ summary: 'Recibir una lectura de pórtico (evento del TAG)' })
   @ApiResponse({ status: 200, description: 'Lectura procesada' })
   async recibirLectura(@Body() dto: LecturaPorticoDto) {
     const resultado = await this.procesarLectura.ejecutar({
@@ -28,9 +28,26 @@ export class TrazabilidadController {
       timestampLectura: new Date(dto.timestampLectura),
     });
 
+    // Si no hay encargo vigente, retornar solo el estado
+    if (!resultado.eventoLectura) {
+      return {
+        registrada: resultado.registrada,
+        notificada: resultado.notificada,
+        motivo: resultado.motivo ?? null,
+      };
+    }
+
+    // Retornar el evento de lectura para que el frontend lo muestre en la tabla
+    const evento = resultado.eventoLectura;
     return {
+      id: evento.id,
+      placa: evento.placa,
+      portico: evento.portico,
+      nivelConfianza: evento.nivelConfianza,
+      notificado: resultado.notificada,
+      timestampLectura: evento.timestampLectura,
+      createdAt: evento.createdAt,
       registrada: resultado.registrada,
-      notificada: resultado.notificada,
       motivo: resultado.motivo ?? null,
     };
   }
