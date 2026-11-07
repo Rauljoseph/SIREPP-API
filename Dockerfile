@@ -11,11 +11,11 @@ COPY prisma ./prisma/
 
 RUN pnpm install --frozen-lockfile --ignore-scripts
 RUN npx prisma generate
+RUN node node_modules/esbuild/install.js 2>/dev/null || true
 
 COPY . .
 
 RUN pnpm build
-RUN ls -R dist/ | head -30
 
 # ── Production stage ───────────────────────────────────
 FROM node:20-alpine AS production
