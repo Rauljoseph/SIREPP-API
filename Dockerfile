@@ -32,4 +32,4 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "find /app/dist -type f -name '*.js' | head -20 && echo '---' && ls -la /app/dist/ && exit 1"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
