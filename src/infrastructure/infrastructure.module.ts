@@ -34,7 +34,7 @@ import { EncargoExpirationService } from './scheduler/encargo-expiration-service
 
 // Adapters
 import { AuditLoggerPrismaAdapter } from './audit/audit-logger.prisma-adapter';
-import { ConsoleMailAdapter } from './mail/console-mail.adapter';
+import { GmailMailAdapter } from './mail/gmail-mail.adapter';
 import { VehiculoRegistryMockAdapter } from './external/vehiculo-registry.mock-adapter';
 
 // Port tokens
@@ -78,7 +78,7 @@ const repositories = [
 
 const adapters = [
   { provide: AUDIT_LOGGER, useClass: AuditLoggerPrismaAdapter },
-  { provide: MAIL_SENDER, useClass: ConsoleMailAdapter },
+  { provide: MAIL_SENDER, useClass: GmailMailAdapter },
   { provide: VEHICULO_REGISTRY, useClass: VehiculoRegistryMockAdapter },
 ];
 
@@ -109,9 +109,9 @@ const useCases = [
   },
   {
     provide: EnviarNotificacionReunificacionUseCase,
-    useFactory: (reunificacionRepo, encargoRepo, notificacionRepo, mailSender) =>
-      new EnviarNotificacionReunificacionUseCase(reunificacionRepo, encargoRepo, notificacionRepo, mailSender),
-    inject: [REUNIFICACION_REPOSITORY, ENCARGO_REPOSITORY, NOTIFICACION_REPOSITORY, MAIL_SENDER],
+    useFactory: (reunificacionRepo, encargoRepo, notificacionRepo, mailSender, hallazgoRepo, unidadRepo) =>
+      new EnviarNotificacionReunificacionUseCase(reunificacionRepo, encargoRepo, notificacionRepo, mailSender, hallazgoRepo, unidadRepo),
+    inject: [REUNIFICACION_REPOSITORY, ENCARGO_REPOSITORY, NOTIFICACION_REPOSITORY, MAIL_SENDER, HALLAZGO_REPOSITORY, UNIDAD_REPOSITORY],
   },
   {
     provide: ReintentarNotificacionesUseCase,

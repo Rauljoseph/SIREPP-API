@@ -71,10 +71,9 @@ export class EncargosController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Anular un encargo vigente' })
   async anular(@Param('id') id: string, @Body() dto: AnularEncargoDto) {
-    const supervisorId = '00000000-0000-0000-0000-000000000000';
     const encargo = await this.anularEncargo.ejecutar({
       encargoId: id,
-      supervisorId,
+      supervisorId: dto.supervisorId,
       motivo: dto.motivo,
     });
     return this.mapearEncargo(encargo);

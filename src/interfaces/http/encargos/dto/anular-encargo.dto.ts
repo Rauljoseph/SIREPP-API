@@ -7,4 +7,7 @@ export class AnularEncargoDto {
   @IsNotEmpty()
   @MinLength(10, { message: 'El motivo debe tener al menos 10 caracteres' })
   motivo!: string;
+
+  @IsString()
+  supervisorId!: string;
 }
