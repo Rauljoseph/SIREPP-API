@@ -7,6 +7,8 @@ import { TrazabilidadModule } from './trazabilidad/trazabilidad.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { AdminModule } from './admin/admin.module';
+import { AuditModule } from './audit/audit.module';
+import { EventoDominioModule } from './evento_dominio/evento_dominio.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { AdminModule } from './admin/admin.module';
     DashboardModule,
     NotificacionesModule,
     AdminModule,
+    AuditModule,
+    EventoDominioModule,
   ],
 })
 export class InterfacesModule {}

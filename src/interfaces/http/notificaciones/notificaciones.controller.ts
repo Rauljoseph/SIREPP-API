@@ -5,7 +5,7 @@ import { ReintentarNotificacionesUseCase } from '../../../application';
 import { NOTIFICACION_REPOSITORY, NotificacionRepository } from '../../../domain/ports';
 
 @ApiTags('Notificaciones')
-@Controller('notificaciones')
+@Controller('api/notificaciones')
 export class NotificacionController {
   constructor(
     @Inject(NOTIFICACION_REPOSITORY)
