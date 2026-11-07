@@ -1,5 +1,4 @@
 # ── Build stage ─────────────────────────────────────────
-# ── Build stage ─────────────────────────────────────────
 FROM node:20-alpine AS builder
 
 RUN apk add --no-cache openssl
@@ -16,6 +15,7 @@ RUN npx prisma generate
 COPY . .
 
 RUN pnpm build
+RUN ls -R dist/ | head -30
 
 # ── Production stage ───────────────────────────────────
 FROM node:20-alpine AS production
