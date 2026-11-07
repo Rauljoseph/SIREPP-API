@@ -56,20 +56,30 @@ export class EnviarNotificacionReunificacionUseCase {
     const guardada = await this.notificacionRepo.guardar(notificacion);
 
     // Intentar enviar
-    try {
-      const resultado = await this.mailSender.enviar({
-        destinatario: encargo.denuncianteEmail,
-        asunto: 'SIREPP — Su placa patente ha sido encontrada',
-        cuerpo: this.componerCuerpo(encargo.placa, reunificacion.id, datosUnidad),
-      });
+    let notificacionActual = guardada;
+    for (let intento = 1; intento <= 3; intento++) {
+      try {
+        const resultado = await this.mailSender.enviar({
+          destinatario: encargo.denuncianteEmail,
+          asunto: 'SIREPP — Su placa patente ha sido encontrada',
+          cuerpo: this.componerCuerpo(encargo.placa, reunificacion.id, datosUnidad),
+        });
 
-      const enviada = guardada.marcarEnviada(resultado.messageId);
-      return this.notificacionRepo.actualizar(enviada);
-    } catch (error) {
-      const mensaje = error instanceof Error ? error.message : 'Error desconocido';
-      const fallida = guardada.marcarFallida(mensaje);
-      return this.notificacionRepo.actualizar(fallida);
+        const enviada = notificacionActual.marcarEnviada(resultado.messageId);
+        return this.notificacionRepo.actualizar(enviada);
+      } catch (error) {
+        const mensaje = error instanceof Error ? error.message : 'Error desconocido';
+        notificacionActual = notificacionActual.marcarFallida(mensaje);
+        notificacionActual = await this.notificacionRepo.actualizar(notificacionActual);
+
+        if (intento < 3) {
+          // Esperar antes de reintentar (1s, 2s)
+          await new Promise((resolve) => setTimeout(resolve, intento * 1000));
+        }
+      }
     }
+
+    return notificacionActual;
   }
 
   private componerCuerpo(placa: string, reunificacionId: string, datosUnidad: string): string {
