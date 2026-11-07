@@ -6,6 +6,7 @@ import { ConsultaModule } from './consulta/consulta.module';
 import { TrazabilidadModule } from './trazabilidad/trazabilidad.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
     TrazabilidadModule,
     DashboardModule,
     NotificacionesModule,
+    AdminModule,
   ],
 })
 export class InterfacesModule {}
