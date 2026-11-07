@@ -1,0 +1,69 @@
+:root {
+  --sirepp-slate: #1e293b;
+  --sirepp-amber: #b45309;
+  --keycloak-logo-url: url("../img/sirepp.svg");
+  --keycloak-logo-height: 48px;
+  --keycloak-logo-width: 220px;
+  --keycloak-card-top-color: var(--sirepp-amber);
+}
+
+.login-pf body {
+  background: radial-gradient(ellipse at 50% 0%, #334155, #0f172a 75%);
+}
+
+#kc-header-wrapper {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.pf-v5-c-login__container {
+  grid-template-columns: minmax(0, 31rem);
+  width: min(100%, 31rem);
+}
+
+.pf-v5-c-login__main {
+  border-radius: 1rem;
+  background: #fff;
+  color: var(--sirepp-slate);
+  box-shadow: 0 24px 64px #02061766;
+  overflow: hidden;
+}
+
+.pf-v5-c-login__main-title {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.pf-v5-c-login__main .pf-v5-c-button.pf-m-primary {
+  --pf-v5-c-button--m-primary--BackgroundColor: #1e293b;
+  --pf-v5-c-button--m-primary--hover--BackgroundColor: #334155;
+  --pf-v5-c-button--m-primary--focus--BackgroundColor: #334155;
+  --pf-v5-c-button--m-primary--active--BackgroundColor: #0f172a;
+  border-radius: 0.5rem;
+  font-weight: 650;
+}
+
+.pf-v5-c-login__main :focus-visible {
+  outline: 2px solid #b45309;
+  outline-offset: 3px;
+}
+
+#kc-totp-settings {
+  padding-inline-start: 1.25rem;
+}
+
+#kc-totp-settings > li {
+  margin-block-end: 1rem;
+}
+
+#kc-totp-secret-qr-code {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.75rem 0;
+}
+
+#otp, #totp {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.15em;
+}

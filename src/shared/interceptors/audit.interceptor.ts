@@ -10,6 +10,8 @@ import { Request } from 'express';
 import { AuditLog } from '../../domain/entities';
 import { AuditLoggerPort, AUDIT_LOGGER } from '../../domain/ports';
 
+import type { FuncionarioAutenticado } from '../auth/funcionario.decorator';
+
 @Injectable()
 export class AuditInterceptor implements NestInterceptor {
   constructor(
@@ -18,7 +20,7 @@ export class AuditInterceptor implements NestInterceptor {
   ) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = context.switchToHttp().getRequest<Request>();
+    const request = context.switchToHttp().getRequest<Request & { user?: FuncionarioAutenticado }>();
     const method = request.method;
     const path = request.path;
     const ip = request.ip ?? '0.0.0.0';
@@ -29,6 +31,8 @@ export class AuditInterceptor implements NestInterceptor {
       return next.handle();
     }
 
+    const funcionario = request.user;
+    if (!funcionario) return next.handle();
     const accion = this.mapMetodoAAccion(method);
 
     return next.handle().pipe(
@@ -38,8 +42,8 @@ export class AuditInterceptor implements NestInterceptor {
             (response as any)?.id ?? request.params?.id ?? null;
 
           const log = AuditLog.crear({
-            // TODO: extraer del JWT cuando Keycloak esté integrado
-            usuarioId: '00000000-0000-0000-0000-000000000000',
+
+            usuarioId: funcionario.id,
             accion,
             entidad: this.extraerEntidad(path),
             entidadId,
