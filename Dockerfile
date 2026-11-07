@@ -18,16 +18,13 @@ RUN pnpm build
 # ── Production stage ───────────────────────────────────
 FROM node:20-alpine AS production
 
-RUN corepack enable && corepack prepare pnpm@latest --activate
-
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml* ./
+COPY package.json ./
 COPY prisma ./prisma/
 
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts
-RUN npx prisma generate
-
+# Copy production node_modules from builder (already has everything)
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
