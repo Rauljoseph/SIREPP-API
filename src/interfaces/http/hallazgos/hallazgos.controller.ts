@@ -14,6 +14,8 @@ import {
 } from '../../../application';
 import { CrearHallazgoDto } from './dto/crear-hallazgo.dto';
 
+import { Funcionario, type FuncionarioAutenticado } from '../../../shared/auth/funcionario.decorator';
+
 @ApiTags('Hallazgos')
 @Controller('api/hallazgos')
 export class HallazgosController {
@@ -25,15 +27,15 @@ export class HallazgosController {
   @Post()
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Registrar un hallazgo de placa' })
-  async crear(@Body() dto: CrearHallazgoDto) {
-    const funcionarioId = '00000000-0000-0000-0000-000000000000';
+  async crear(@Body() dto: CrearHallazgoDto, @Funcionario() funcionario: FuncionarioAutenticado) {
+
 
     const resultado = await this.registrarHallazgo.ejecutar({
       placa: dto.placa,
       estadoFisico: dto.estadoFisico,
       observaciones: dto.observaciones,
-      unidadId: dto.unidadId,
-      funcionarioId,
+      unidadId: funcionario.unidadId,
+      funcionarioId: funcionario.id,
     });
 
     return {

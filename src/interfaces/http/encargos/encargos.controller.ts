@@ -17,6 +17,8 @@ import {
 import { CrearEncargoDto } from './dto/crear-encargo.dto';
 import { AnularEncargoDto } from './dto/anular-encargo.dto';
 
+import { Funcionario, type FuncionarioAutenticado } from '../../../shared/auth/funcionario.decorator';
+
 @ApiTags('Encargos')
 @Controller('api/encargos')
 export class EncargosController {
@@ -30,8 +32,8 @@ export class EncargosController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Registrar un nuevo encargo de placa' })
   @ApiResponse({ status: 201, description: 'Encargo registrado exitosamente' })
-  async crear(@Body() dto: CrearEncargoDto) {
-    const funcionarioId = '00000000-0000-0000-0000-000000000000';
+  async crear(@Body() dto: CrearEncargoDto, @Funcionario() funcionario: FuncionarioAutenticado) {
+
 
     const resultado = await this.registrarEncargo.ejecutar({
       placa: dto.placa,
@@ -43,8 +45,8 @@ export class EncargosController {
       constanciaNumero: dto.constanciaNumero,
       fechaHecho: new Date(dto.fechaHecho),
       observaciones: dto.observaciones,
-      unidadId: dto.unidadId,
-      funcionarioId,
+      unidadId: funcionario.unidadId,
+      funcionarioId: funcionario.id,
     });
 
     return {
@@ -70,10 +72,11 @@ export class EncargosController {
   @Patch(':id/anular')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Anular un encargo vigente' })
-  async anular(@Param('id') id: string, @Body() dto: AnularEncargoDto) {
+  async anular(@Param('id') id: string, @Body() dto: AnularEncargoDto, @Funcionario() funcionario: FuncionarioAutenticado) {
+
     const encargo = await this.anularEncargo.ejecutar({
       encargoId: id,
-      supervisorId: dto.supervisorId,
+      supervisorId: funcionario.id,
       motivo: dto.motivo,
     });
     return this.mapearEncargo(encargo);

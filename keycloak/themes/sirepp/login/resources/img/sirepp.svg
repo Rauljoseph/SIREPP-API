@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 48">
+  <rect x="0" y="0" width="48" height="48" rx="12" fill="#b45309"/>
+  <path d="M24 10c4 3 8 4 12 5v9c0 7-5 12-12 15-7-3-12-8-12-15v-9c4-1 8-2 12-5Z" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
+  <text x="64" y="34" fill="#fff" font-family="system-ui,sans-serif" font-size="31" font-weight="750" letter-spacing="1">SIREPP</text>
+</svg>
