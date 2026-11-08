@@ -1,0 +1,92 @@
+.pf-v5-c-login__container {
+  --sirepp-card-width: 37rem;
+  grid-template-columns: minmax(0, var(--sirepp-card-width));
+  width: min(100%, var(--sirepp-card-width));
+}
+
+.pf-v5-c-login__container:has(#kc-totp-settings-form) {
+  --sirepp-card-width: 56rem;
+}
+
+.pf-v5-c-login__main {
+  overflow: visible;
+}
+
+.pf-v5-c-login__main-header {
+  border-radius: 1rem 1rem 0 0;
+}
+
+.pf-v5-c-login__main-header:has(#login-select-toggle) {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+#kc-locale, .pf-v5-c-login__main-header-utilities:has(#login-select-toggle) {
+  display: none;
+}
+
+.sirepp-enrollment {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.sirepp-enrollment > #kc-totp-settings {
+  margin: 0;
+  padding: 1.25rem 1.25rem 0.25rem 2.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  list-style: decimal;
+}
+
+.sirepp-enrollment #kc-totp-supported-apps {
+  list-style: disc;
+  padding-inline-start: 1.25rem;
+}
+
+.sirepp-enrollment #kc-totp-secret-qr-code {
+  width: min(100%, 12.5rem);
+  height: auto;
+}
+
+.sirepp-help {
+  display: inline-flex;
+  position: relative;
+  margin-inline-start: 0.45rem;
+  vertical-align: middle;
+}
+
+.sirepp-help button {
+  display: grid;
+  width: 1.65rem;
+  height: 1.65rem;
+  place-items: center;
+  border: 1px solid #94a3b8;
+  border-radius: 50%;
+  background: #f8fafc;
+  color: #334155;
+  font: 700 0.875rem/1 system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.sirepp-help [role="tooltip"] {
+  position: absolute;
+  z-index: 3;
+  top: calc(100% + 0.3rem);
+  inset-inline-end: 0;
+  width: min(14rem, 62vw);
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.5rem;
+  background: #1e293b;
+  color: #fff;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  box-shadow: 0 6px 20px #02061733;
+}
+
+@media (min-width: 760px) {
+  .sirepp-enrollment {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2rem;
+  }
+}
