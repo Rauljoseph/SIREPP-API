@@ -12,6 +12,46 @@
   overflow: visible;
 }
 
+.sirepp-invitation #kc-page-title,
+.sirepp-invitation #kc-info-message {
+  text-align: center;
+}
+
+.sirepp-invitation #kc-info-message .instruction {
+  max-width: 33ch;
+  margin: 0 auto 1.5rem;
+  line-height: 1.6;
+}
+
+.sirepp-invitation #kc-info-message .pf-v5-c-button {
+  min-height: 2.75rem;
+  padding-inline: 1.25rem;
+}
+
+.sirepp-password-success {
+  padding: 0.85rem 1rem;
+  border: 1px solid #86efac;
+  border-radius: 0.5rem;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.sirepp-invitation-complete #kc-page-title,
+.sirepp-invitation-complete #kc-info-message {
+  text-align: center;
+}
+
+.sirepp-invitation-complete .sirepp-password-success {
+  max-width: 38ch;
+  margin: 0 auto 1.5rem;
+  line-height: 1.6;
+}
+
+.sirepp-invitation-complete #kc-info-message .pf-v5-c-button {
+  min-height: 2.75rem;
+  padding-inline: 1.25rem;
+}
+
 .pf-v5-c-login__main-header {
   border-radius: 1rem 1rem 0 0;
 }
