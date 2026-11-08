@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener('DOMContentLoaded', () => {
   const marker = 'sirepp-password-reset-in-progress'
+  const invitationMarker = 'sirepp-invitation-in-progress'
   const otp = document.getElementById('kc-otp-login-form')
   const isResetPath = window.location.pathname.endsWith('/login-actions/reset-credentials')
 
@@ -73,19 +74,43 @@ document.addEventListener('DOMContentLoaded', () => {
   const title = document.getElementById('kc-page-title')
   const message = document.querySelector('#kc-info-message .instruction')
   const returnLink = document.querySelector('#kc-info-message a[href]')
-  if (!title || !message || !returnLink || title.textContent.trim() !== 'Cuenta actualizada') return
+  if (!title || !message || !returnLink) return
+
+  if (title.textContent.trim() === 'Configura tu acceso a SIREPP') {
+    document.documentElement.classList.add('sirepp-invitation')
+    message.textContent = 'Sigue los pasos para activar tu cuenta. Si ya completaste alguno, continuarás donde quedaste.'
+    returnLink.textContent = 'Continuar con la activación'
+    returnLink.classList.add('pf-v5-c-button', 'pf-m-primary')
+    returnLink.addEventListener('click', () => {
+      try { sessionStorage.setItem(invitationMarker, String(Date.now())) } catch {}
+    })
+    return
+  }
+
+  if (title.textContent.trim() !== 'Cuenta actualizada') return
 
   const execution = new URLSearchParams(window.location.search).get('execution')
   let recentReset = false
+  let recentInvitation = false
   try {
     const started = Number(sessionStorage.getItem(marker))
     recentReset = started > 0 && Date.now() - started < 600_000
+    const invited = Number(sessionStorage.getItem(invitationMarker))
+    recentInvitation = invited > 0 && Date.now() - invited < 3_600_000
   } catch {}
-  if (!recentReset && execution !== 'UPDATE_PASSWORD') return
+  if (!recentInvitation && !recentReset && execution !== 'UPDATE_PASSWORD') return
 
-  title.textContent = 'Contraseña actualizada'
+  title.textContent = recentInvitation ? 'Tu cuenta está lista' : 'Contraseña actualizada'
   message.textContent = 'Ya puedes iniciar sesión en SIREPP con tu nueva contraseña.'
-  returnLink.textContent = 'Volver al inicio de sesión'
+  if (recentInvitation) {
+    document.documentElement.classList.add('sirepp-invitation-complete')
+    message.classList.add('sirepp-password-success')
+    message.setAttribute('role', 'status')
+  }
+  returnLink.textContent = recentInvitation ? 'Iniciar sesión en SIREPP' : 'Volver al inicio de sesión'
   returnLink.classList.add('pf-v5-c-button', 'pf-m-primary')
-  try { sessionStorage.removeItem(marker) } catch {}
+  try {
+    sessionStorage.removeItem(marker)
+    sessionStorage.removeItem(invitationMarker)
+  } catch {}
 })

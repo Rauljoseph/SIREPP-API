@@ -11,6 +11,11 @@
   background: radial-gradient(ellipse at 50% 0%, #334155, #0f172a 75%);
 }
 
+/* Keycloak provides its own password visibility button. */
+input[type="password"]::-ms-reveal {
+  display: none;
+}
+
 #kc-header-wrapper {
   letter-spacing: 0;
   text-transform: none;
