@@ -1,10 +1,11 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { PrismaService } from '../../../infrastructure/persistence/prisma/prisma.service';
-// ⚠️ Si el import de PrismaService da error, copia la ruta que usa tu dashboard.controller.ts
+import { AdministradorGuard } from '../../../shared/auth/administrador.guard';
 
 @ApiTags('Auditoría')
 @Controller('api/audit')
+@UseGuards(AdministradorGuard)
 export class AuditController {
   constructor(private readonly prisma: PrismaService) {}
 

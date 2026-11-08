@@ -7,7 +7,7 @@ import {
   Param,
   BadRequestException,
   ConflictException,
-  ForbiddenException,
+  UseGuards,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,11 +16,12 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../../infrastructure/persistence/prisma/prisma.service';
 import { CrearUnidadDto } from './dto/crear-unidad.dto';
 import { CrearUsuarioDto } from './dto/crear-usuario.dto';
-import { Funcionario, type FuncionarioAutenticado } from '../../../shared/auth/funcionario.decorator';
+import { AdministradorGuard } from '../../../shared/auth/administrador.guard';
 import { KeycloakAdminService } from './keycloak-admin.service';
 
 @ApiTags('Administración')
 @Controller('api/admin')
+@UseGuards(AdministradorGuard)
 export class AdminController {
   private readonly logger = new Logger(AdminController.name);
 
@@ -78,8 +79,7 @@ export class AdminController {
 
   @Post('usuarios')
   @ApiOperation({ summary: 'Crear un nuevo usuario' })
-  async crearUsuario(@Body() dto: CrearUsuarioDto, @Funcionario() funcionario: FuncionarioAutenticado) {
-    this.exigirAdministrador(funcionario);
+  async crearUsuario(@Body() dto: CrearUsuarioDto) {
     const email = dto.email.trim().toLowerCase();
     const duplicados = await this.prisma.$queryRaw<{ existe: boolean }[]>`
       SELECT EXISTS (SELECT 1 FROM "usuario" WHERE LOWER(BTRIM("email")) = ${email}) AS existe
@@ -119,8 +119,7 @@ export class AdminController {
   }
 
   @Post('usuarios/:id/invitacion')
-  async reenviarInvitacion(@Param('id') id: string, @Funcionario() funcionario: FuncionarioAutenticado) {
-    this.exigirAdministrador(funcionario);
+  async reenviarInvitacion(@Param('id') id: string) {
     const usuario = await this.prisma.usuario.findUnique({ where: { id }, include: { unidad: true } });
     if (!usuario) throw new NotFoundException('No se encontró al funcionario.');
     if (!usuario.servicioActivo || !usuario.unidad.activa || usuario.keycloakSub.startsWith('local-')) {
@@ -128,12 +127,6 @@ export class AdminController {
     }
     await this.keycloak.enviarInvitacion(usuario.keycloakSub);
     return { invitacionEnviada: true };
-  }
-
-  private exigirAdministrador(funcionario: FuncionarioAutenticado) {
-    if (funcionario.rol !== 'ADMINISTRADOR') {
-      throw new ForbiddenException('Solo un administrador puede gestionar invitaciones.');
-    }
   }
 
   @Delete('usuarios/:id')

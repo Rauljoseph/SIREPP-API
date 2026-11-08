@@ -103,5 +103,5 @@ En **Localization → Realm overrides**, configura en español la clave **emailS
 ### Pruebas después del despliegue
 
 1. Con un administrador, crea un funcionario de prueba. Confirma que un correo duplicado se rechaza y que el correo nuevo recibe la invitación. Abre el enlace, vincula el OTP, define la contraseña e inicia sesión con el rol asignado.
-2. Comprueba que una cuenta con rol Guardia recibe HTTP 403 al llamar a la ruta de reenvío.
+2. Comprueba que una cuenta con rol Guardia recibe HTTP 403 al llamar a las rutas de Administración y Auditoría, incluido el reenvío. Verifica que una cuenta administradora pueda consultar el resumen de Auditoría y administrar los funcionarios.
 3. Con una cuenta de prueba y correo verificado, falla cinco veces con más de un segundo entre intentos. Comprueba el bloqueo y el correo de alerta. Vuelve a entrar con la contraseña correcta y el OTP al vencer los 15 minutos.
