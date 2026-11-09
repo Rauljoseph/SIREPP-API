@@ -48,7 +48,8 @@ export class KeycloakAdminService {
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(this.timeoutMs),
       });
-    } catch {
+    } catch (error) {
+      this.logger.error(`Error al comunicarse con Keycloak: ${error instanceof Error ? error.message : String(error)}`);
       throw new BadGatewayException('No se pudo comunicar con Keycloak.');
     }
   }
@@ -114,6 +115,10 @@ export class KeycloakAdminService {
       redirect_uri: redirectUri,
     });
     const sent = await this.request(userPath + '/execute-actions-email?' + query, 'PUT', actions);
-    if (!sent.ok) throw new BadGatewayException('No se pudo enviar la invitación desde Keycloak.');
+    if (!sent.ok) {
+      const errorBody = await sent.text().catch(() => '(sin cuerpo)');
+      this.logger.error(`execute-actions-email falló: HTTP ${sent.status} — ${errorBody}`);
+      throw new BadGatewayException('No se pudo enviar la invitación desde Keycloak.');
+    }
   }
 }
