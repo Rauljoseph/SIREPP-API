@@ -4,8 +4,11 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class KeycloakAdminService {
   private readonly logger = new Logger(KeycloakAdminService.name);
+  private readonly timeoutMs: number;
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(private readonly config: ConfigService) {
+    this.timeoutMs = parseInt(this.config.get<string>('KEYCLOAK_ADMIN_TIMEOUT_MS', '15000'), 10);
+  }
 
   private configuracionRequerida(variable: string) {
     const valor = this.config.get<string>(variable)?.trim();
@@ -35,7 +38,7 @@ export class KeycloakAdminService {
       const token = await fetch(this.issuer + '/protocol/openid-connect/token', {
         method: 'POST',
         body: new URLSearchParams({ grant_type: 'client_credentials', client_id: clientId, client_secret: secret }),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
       if (!token.ok) throw new Error('Client authentication failed');
       const { access_token: accessToken } = await token.json() as { access_token: string };
@@ -43,7 +46,7 @@ export class KeycloakAdminService {
         method,
         headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(5000),
+        signal: AbortSignal.timeout(this.timeoutMs),
       });
     } catch {
       throw new BadGatewayException('No se pudo comunicar con Keycloak.');
