@@ -154,6 +154,23 @@ export class AdminController {
       );
     }
 
-    return this.prisma.usuario.delete({ where: { id } });
+    try {
+      return await this.prisma.$transaction(async (tx) => {
+        // Delete locally first so database constraints are checked before touching Keycloak.
+        const usuario = await tx.usuario.delete({ where: { id } });
+        if (!usuario.keycloakSub.startsWith('local-')) {
+          await this.keycloak.eliminarCuenta(usuario.keycloakSub);
+        }
+        return usuario;
+      }, { timeout: this.keycloak.eliminacionTimeoutMs });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2025') throw new NotFoundException('No se encontró al funcionario.');
+        if (error.code === 'P2003') {
+          throw new ConflictException('No se puede eliminar este usuario porque tiene registros asociados.');
+        }
+      }
+      throw error;
+    }
   }
 }

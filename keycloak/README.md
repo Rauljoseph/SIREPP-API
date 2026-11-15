@@ -98,7 +98,7 @@ Crea y asigna un flujo **Reset credentials** con este orden:
 
 En **Localization → Realm overrides**, configura en español la clave **emailSentMessage** con este texto:
 
-> Si tu cuenta tiene un correo electrónico registrado, recibirás un enlace para restablecer tu contraseña. Si no tienes un correo asociado o no puedes acceder a él, contacta al administrador de SIREPP.
+> Si tu cuenta tiene un correo electrónico registrado, recibirás un enlace para restablecer tu contraseña. Si no encuentras el correo en tu bandeja de entrada, revisa la carpeta de spam o correo no deseado. Si no tienes un correo asociado o no puedes acceder a él, contacta al administrador de SIREPP.
 
 ### Pruebas después del despliegue
 

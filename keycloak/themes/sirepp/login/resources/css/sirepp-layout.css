@@ -12,6 +12,17 @@
   overflow: visible;
 }
 
+.sirepp-invitation .pf-v5-c-login__main-header {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sirepp-invitation #kc-page-title {
+  grid-column: 1 / -1;
+  width: 100%;
+  max-width: none;
+  text-wrap: balance;
+}
+
 .sirepp-invitation #kc-page-title,
 .sirepp-invitation #kc-info-message {
   text-align: center;
