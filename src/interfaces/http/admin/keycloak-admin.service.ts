@@ -79,8 +79,14 @@ export class KeycloakAdminService {
   async eliminarCuenta(id: string) {
     const response = await this.request('/' + encodeURIComponent(id), 'DELETE');
     if (!response.ok && response.status !== 404) {
-      throw new BadGatewayException('No se pudo revertir el alta en Keycloak.');
+      this.logger.warn(`Eliminación en Keycloak: HTTP ${response.status}.`);
+      throw new BadGatewayException('No se pudo eliminar la cuenta en Keycloak.');
     }
+  }
+
+  get eliminacionTimeoutMs() {
+    // Token and delete requests each have their own timeout.
+    return 2 * this.timeoutMs + 5_000;
   }
 
   async enviarInvitacion(id: string) {
