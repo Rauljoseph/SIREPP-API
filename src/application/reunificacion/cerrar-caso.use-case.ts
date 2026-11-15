@@ -3,7 +3,8 @@ import { TipoEventoDominio } from '../../domain/enums';
 import {
   ReunificacionRepository,
   EncargoRepository,
-  EventoDominioRepository, UsuarioRepository,
+  EventoDominioRepository,
+  EventPublisherPort, UsuarioRepository,
 } from '../../domain/ports';
 import { AccesoDenegadoException } from '../../domain/exceptions';
 
@@ -20,6 +21,7 @@ export class CerrarCasoUseCase {
     private readonly encargoRepo: EncargoRepository,
     private readonly eventoRepo: EventoDominioRepository,
     private readonly usuarioRepo: UsuarioRepository,
+    private readonly eventPublisher: EventPublisherPort
   ) {}
 
   async ejecutar(input: CerrarCasoInput): Promise<Reunificacion> {
@@ -56,6 +58,17 @@ export class CerrarCasoUseCase {
       funcionarioEntregaId: input.funcionarioEntregaId,
     });
     await this.eventoRepo.guardar(evento);
+
+    // ── NUEVO: publicar evento a la cola ──
+    try {
+      await this.eventPublisher.publicar(TipoEventoDominio.CASO_CERRADO, {
+        reunificacionId: actualizada.id,
+        encargoId: reunificacion.encargoId,
+        funcionarioEntregaId: input.funcionarioEntregaId,
+      });
+    } catch (error) {
+      console.error('Error publicando evento CASO_CERRADO:', (error as Error).message);
+    }
 
     return actualizada;
   }

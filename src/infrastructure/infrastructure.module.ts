@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { BullModule } from '@nestjs/bullmq';
+import { BullBoardConfigModule } from './events/bull-board.module';
 
 // Prisma
 import { PrismaModule } from './persistence/prisma/prisma.module';
@@ -16,7 +18,7 @@ import { EventoLecturaMapper } from './persistence/mappers/evento-lectura.mapper
 import { EventoDominioMapper } from './persistence/mappers/evento-dominio.mapper';
 import { UnidadMapper } from './persistence/mappers/unidad.mapper';
 import { UsuarioMapper } from './persistence/mappers/usuario.mapper';
-import { UNIDAD_REPOSITORY, USUARIO_REPOSITORY } from '../domain/ports';
+import { UNIDAD_REPOSITORY, USUARIO_REPOSITORY, EVENT_PUBLISHER } from '../domain/ports';
 import { ConsultarUnidadUseCase } from '../application';
 
 // Repositories
@@ -36,6 +38,11 @@ import { EncargoExpirationService } from './scheduler/encargo-expiration-service
 import { AuditLoggerPrismaAdapter } from './audit/audit-logger.prisma-adapter';
 import { GmailMailAdapter } from './mail/gmail-mail.adapter';
 import { VehiculoRegistryMockAdapter } from './external/vehiculo-registry.mock-adapter';
+
+// ── BullMQ: adapters de eventos (flag) ──
+import { BullMqEventPublisherAdapter } from './events/bullmq-event-publisher.adapter';
+import { NoopEventPublisherAdapter } from './events/noop-event-publisher.adapter';
+import { SireppEventosProcessor } from './events/sirepp-eventos.processor';
 
 // Port tokens
 import {
@@ -65,6 +72,9 @@ import {
   ConsultarEstadoPlacaUseCase,
 } from '../application';
 
+// ── Feature flag ──
+const eventsEnabled = process.env.EVENTS_ENABLED === 'true';
+
 const repositories = [
   { provide: ENCARGO_REPOSITORY, useClass: EncargoPrismaRepository },
   { provide: HALLAZGO_REPOSITORY, useClass: HallazgoPrismaRepository },
@@ -80,14 +90,19 @@ const adapters = [
   { provide: AUDIT_LOGGER, useClass: AuditLoggerPrismaAdapter },
   { provide: MAIL_SENDER, useClass: GmailMailAdapter },
   { provide: VEHICULO_REGISTRY, useClass: VehiculoRegistryMockAdapter },
+  // ── Flag: si EVENTS_ENABLED=true usa BullMQ, si no usa Noop (no hace nada) ──
+  {
+    provide: EVENT_PUBLISHER,
+    useClass: eventsEnabled ? BullMqEventPublisherAdapter : NoopEventPublisherAdapter,
+  },
 ];
 
 const useCases = [
   {
     provide: AnularEncargoUseCase,
-    useFactory: (encargoRepo, eventoRepo, usuarioRepo) =>
-      new AnularEncargoUseCase(encargoRepo, eventoRepo, usuarioRepo),
-    inject: [ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, USUARIO_REPOSITORY],
+    useFactory: (encargoRepo, eventoRepo, usuarioRepo, eventPublisher) =>
+      new AnularEncargoUseCase(encargoRepo, eventoRepo, usuarioRepo, eventPublisher),
+    inject: [ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, USUARIO_REPOSITORY, EVENT_PUBLISHER],
   },
   {
     provide: ConsultarEncargoUseCase,
@@ -103,9 +118,9 @@ const useCases = [
   },
   {
     provide: ConciliarPlacaUseCase,
-    useFactory: (encargoRepo, hallazgoRepo, reunificacionRepo, eventoRepo) =>
-      new ConciliarPlacaUseCase(encargoRepo, hallazgoRepo, reunificacionRepo, eventoRepo),
-    inject: [ENCARGO_REPOSITORY, HALLAZGO_REPOSITORY, REUNIFICACION_REPOSITORY, EVENTO_DOMINIO_REPOSITORY],
+    useFactory: (encargoRepo, hallazgoRepo, reunificacionRepo, eventoRepo, eventPublisher) =>
+      new ConciliarPlacaUseCase(encargoRepo, hallazgoRepo, reunificacionRepo, eventoRepo, eventPublisher),
+    inject: [ENCARGO_REPOSITORY, HALLAZGO_REPOSITORY, REUNIFICACION_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, EVENT_PUBLISHER],
   },
   {
     provide: EnviarNotificacionReunificacionUseCase,
@@ -121,15 +136,15 @@ const useCases = [
   },
   {
     provide: ProcesarLecturaUseCase,
-    useFactory: (encargoRepo, eventoLecturaRepo, notificacionRepo, eventoRepo, mailSender) =>
-      new ProcesarLecturaUseCase(encargoRepo, eventoLecturaRepo, notificacionRepo, eventoRepo, mailSender),
-    inject: [ENCARGO_REPOSITORY, EVENTO_LECTURA_REPOSITORY, NOTIFICACION_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, MAIL_SENDER],
+    useFactory: (encargoRepo, eventoLecturaRepo, notificacionRepo, eventoRepo, mailSender, eventPublisher) =>
+      new ProcesarLecturaUseCase(encargoRepo, eventoLecturaRepo, notificacionRepo, eventoRepo, mailSender, eventPublisher),
+    inject: [ENCARGO_REPOSITORY, EVENTO_LECTURA_REPOSITORY, NOTIFICACION_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, MAIL_SENDER, EVENT_PUBLISHER],
   },
   {
     provide: CerrarCasoUseCase,
-    useFactory: (reunificacionRepo, encargoRepo, eventoRepo, usuarioRepo) =>
-      new CerrarCasoUseCase(reunificacionRepo, encargoRepo, eventoRepo, usuarioRepo),
-    inject: [REUNIFICACION_REPOSITORY, ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, USUARIO_REPOSITORY],
+    useFactory: (reunificacionRepo, encargoRepo, eventoRepo,usuarioRepo,  eventPublisher) =>
+      new CerrarCasoUseCase(reunificacionRepo, encargoRepo, eventoRepo, usuarioRepo, eventPublisher),
+    inject: [REUNIFICACION_REPOSITORY, ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY,USUARIO_REPOSITORY, EVENT_PUBLISHER],
   },
   {
     provide: ConsultarEstadoPlacaUseCase,
@@ -142,31 +157,33 @@ const useCases = [
     useFactory: (unidadRepo) => new ConsultarUnidadUseCase(unidadRepo),
     inject: [UNIDAD_REPOSITORY],
   },
+  // ── Refactorizado: sin EnviarNotificacionReunificacionUseCase ──
+  // La notificación ahora la maneja el processor de BullMQ (patrón Observer)
   {
     provide: RegistrarEncargoUseCase,
-    useFactory: (encargoRepo, eventoRepo, vehiculoRegistry, conciliar, notificar, hallazgoRepo, unidadRepo, usuarioRepo) =>
-      new RegistrarEncargoUseCase(encargoRepo, eventoRepo, vehiculoRegistry, conciliar, notificar, hallazgoRepo, unidadRepo, usuarioRepo),
+    useFactory: (encargoRepo, eventoRepo, vehiculoRegistry, conciliar, hallazgoRepo, unidadRepo, usuarioRepo, eventPublisher) =>
+      new RegistrarEncargoUseCase(encargoRepo, eventoRepo, vehiculoRegistry, conciliar, hallazgoRepo, unidadRepo, usuarioRepo, eventPublisher),
     inject: [
       ENCARGO_REPOSITORY,
       EVENTO_DOMINIO_REPOSITORY,
       VEHICULO_REGISTRY,
       ConciliarPlacaUseCase,
-      EnviarNotificacionReunificacionUseCase,
       HALLAZGO_REPOSITORY,
       UNIDAD_REPOSITORY,
       USUARIO_REPOSITORY,
+      EVENT_PUBLISHER,
     ],
   },
+  // ── Refactorizado: sin EnviarNotificacionReunificacionUseCase ──
   {
     provide: RegistrarHallazgoUseCase,
-    useFactory: (hallazgoRepo, eventoRepo, conciliar, notificar) =>
-      new RegistrarHallazgoUseCase(hallazgoRepo, eventoRepo, conciliar, notificar),
+    useFactory: (hallazgoRepo, eventoRepo, conciliar, eventPublisher) =>
+      new RegistrarHallazgoUseCase(hallazgoRepo, eventoRepo, conciliar, eventPublisher),
     inject: [
       HALLAZGO_REPOSITORY,
       EVENTO_DOMINIO_REPOSITORY,
       ConciliarPlacaUseCase,
-      EnviarNotificacionReunificacionUseCase,
-
+      EVENT_PUBLISHER,
     ],
   },
   {
@@ -177,8 +194,22 @@ const useCases = [
   },
 ];
 
+// ── Imports condicionales: registrar cola BullMQ solo si está habilitado ──
+const conditionalImports = eventsEnabled
+  ? [BullModule.registerQueue({ name: 'sirepp-eventos' }), BullBoardConfigModule]
+  : [];
+
+// ── Processor solo si está habilitado ──
+const conditionalProviders = eventsEnabled
+  ? [SireppEventosProcessor]
+  : [];
+
 @Module({
-  imports: [PrismaModule, ConfigModule],
+  imports: [
+    PrismaModule,
+    ConfigModule,
+    ...conditionalImports,
+  ],
   providers: [
     // Servicios internos
     AesCipherService,
@@ -195,6 +226,8 @@ const useCases = [
     ...repositories,
     ...adapters,
     ...useCases,
+    // BullMQ processor (solo si EVENTS_ENABLED=true)
+    ...conditionalProviders,
     // Scheduler
     EncargoExpirationService,
   ],

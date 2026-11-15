@@ -1,21 +1,17 @@
 import { v4 as uuid } from 'uuid';
 import { Encargo, EventoDominio } from '../../domain/entities';
-import { Unidad } from '../../domain/entities';
 import { TipoEvento, TipoEventoDominio } from '../../domain/enums';
 import {
   EncargoRepository,
   EventoDominioRepository,
   VehiculoRegistryPort,
   HallazgoRepository,
-  ReunificacionRepository,
-  NotificacionRepository,
-  MailSenderPort,
   UnidadRepository,
   UsuarioRepository,
+  EventPublisherPort,
 } from '../../domain/ports';
 import { PlacaInvalidaException, AccesoDenegadoException } from '../../domain/exceptions';
 import { ConciliarPlacaUseCase } from '../conciliacion/conciliar-placa.use-case';
-import { EnviarNotificacionReunificacionUseCase } from '../notificaciones/enviar-notificacion-reunificacion.use-case';
 
 export interface RegistrarEncargoInput {
   placa: string;
@@ -63,10 +59,10 @@ export class RegistrarEncargoUseCase {
     private readonly eventoRepo: EventoDominioRepository,
     private readonly vehiculoRegistry: VehiculoRegistryPort,
     private readonly conciliar: ConciliarPlacaUseCase,
-    private readonly notificar: EnviarNotificacionReunificacionUseCase,
     private readonly hallazgoRepo: HallazgoRepository,
     private readonly unidadRepo: UnidadRepository,
     private readonly usuarioRepo: UsuarioRepository,
+    private readonly eventPublisher: EventPublisherPort,
   ) {}
 
   async ejecutar(input: RegistrarEncargoInput): Promise<RegistrarEncargoOutput> {
@@ -79,12 +75,6 @@ export class RegistrarEncargoUseCase {
     if (!Encargo.validarPlaca(input.placa)) {
       throw new PlacaInvalidaException(input.placa);
     }
-
-    // 2. Validar que la placa exista en el registro vehicular
-    // const existe = await this.vehiculoRegistry.existePlaca(input.placa);
-    // if (!existe) {
-    //   throw new Error(`La placa ${input.placa} no se encuentra en el registro vehicular`);
-    // }
 
     const encargoExistente = await this.encargoRepo.buscarVigentePorPlaca(input.placa);
     if (encargoExistente) {
@@ -112,6 +102,21 @@ export class RegistrarEncargoUseCase {
     });
     await this.eventoRepo.guardar(evento);
 
+    // 5. Publicar evento a la cola (observadores reaccionan de forma asíncrona)
+    try {
+      await this.eventPublisher.publicar(TipoEventoDominio.PLACA_ENCARGADA, {
+        encargoId: encargoGuardado.id,
+        placa: encargoGuardado.placa,
+        unidadId: encargoGuardado.unidadId,
+        funcionarioId: encargoGuardado.funcionarioId,
+      });
+    } catch (error) {
+      console.error('Error publicando evento PLACA_ENCARGADA:', (error as Error).message);
+    }
+
+    // 6. Intentar conciliación automática (síncrona — el usuario necesita el resultado)
+    //    Si concilia, el evento PLACA_REUNIFICADA se publica desde ConciliarPlacaUseCase
+    //    y el processor se encarga de enviar el email de notificación.
     const conciliacion = await this.intentarConciliacion(encargoGuardado);
 
     return {
@@ -133,19 +138,12 @@ export class RegistrarEncargoUseCase {
         return null;
       }
 
-      // Notificar — si falla no bloquea la operación
-      try {
-        await this.notificar.ejecutar({
-          reunificacionId: resultado.reunificacion.id,
-        });
-      } catch (error) {
-        console.error('Error al enviar notificación:', (error as Error).message);
-      }
+      // ── La notificación por email ahora la maneja el processor de BullMQ ──
+      // ── al recibir el evento PLACA_REUNIFICADA (patrón Observer) ──
 
-      // Obtener datos del hallazgo
+      // Obtener datos del hallazgo para la respuesta al frontend
       const hallazgo = await this.obtenerDatosHallazgo(resultado.reunificacion.hallazgoId);
 
-      // Obtener unidad de custodia
       const unidadCustodia = hallazgo
         ? await this.obtenerUnidadCustodia(hallazgo.unidadId)
         : null;

@@ -4,6 +4,7 @@ import {
   EncargoRepository,
   EventoDominioRepository,
   UsuarioRepository,
+  EventPublisherPort,
 } from '../../domain/ports';
 import { EncargoNoEncontradoException, AccesoDenegadoException } from '../../domain/exceptions';
 
@@ -18,6 +19,7 @@ export class AnularEncargoUseCase {
     private readonly encargoRepo: EncargoRepository,
     private readonly eventoRepo: EventoDominioRepository,
     private readonly usuarioRepo: UsuarioRepository,
+    private readonly eventPublisher: EventPublisherPort,
   ) {}
 
   async ejecutar(input: AnularEncargoInput): Promise<Encargo> {
@@ -42,6 +44,18 @@ export class AnularEncargoUseCase {
       motivo: input.motivo,
     });
     await this.eventoRepo.guardar(evento);
+
+    // ── NUEVO: publicar evento a la cola ──
+    try {
+      await this.eventPublisher.publicar(TipoEventoDominio.ENCARGO_ANULADO, {
+        encargoId: actualizado.id,
+        placa: actualizado.placa,
+        supervisorId: input.supervisorId,
+        motivo: input.motivo,
+      });
+    } catch (error) {
+      console.error('Error publicando evento ENCARGO_ANULADO:', (error as Error).message);
+    }
 
     return actualizado;
   }

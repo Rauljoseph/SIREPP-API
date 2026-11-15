@@ -4,9 +4,9 @@ import { EstadoFisico, TipoEventoDominio } from '../../domain/enums';
 import {
   HallazgoRepository,
   EventoDominioRepository,
+  EventPublisherPort,
 } from '../../domain/ports';
 import { ConciliarPlacaUseCase } from '../conciliacion/conciliar-placa.use-case';
-import { EnviarNotificacionReunificacionUseCase } from '../notificaciones/enviar-notificacion-reunificacion.use-case';
 
 export interface RegistrarHallazgoInput {
   placa: string;
@@ -29,7 +29,7 @@ export class RegistrarHallazgoUseCase {
     private readonly hallazgoRepo: HallazgoRepository,
     private readonly eventoRepo: EventoDominioRepository,
     private readonly conciliar: ConciliarPlacaUseCase,
-    private readonly notificar: EnviarNotificacionReunificacionUseCase,
+    private readonly eventPublisher: EventPublisherPort,
   ) {}
 
   async ejecutar(input: RegistrarHallazgoInput): Promise<RegistrarHallazgoOutput> {
@@ -54,7 +54,18 @@ export class RegistrarHallazgoUseCase {
     });
     await this.eventoRepo.guardar(evento);
 
-    // 3. Intentar conciliación automática
+    // 3. Publicar evento a la cola (observadores reaccionan de forma asíncrona)
+    try {
+      await this.eventPublisher.publicar(TipoEventoDominio.PLACA_HALLADA, {
+        hallazgoId: guardado.id,
+        placa: guardado.placa,
+        unidadId: guardado.unidadId,
+        funcionarioId: guardado.funcionarioId,
+      });
+    } catch (error) {
+      console.error('Error publicando evento PLACA_HALLADA:', (error as Error).message);
+    }
+
     const conciliacion = await this.intentarConciliacion(guardado);
 
     return {
@@ -76,14 +87,8 @@ export class RegistrarHallazgoUseCase {
         return null;
       }
 
-      // Notificar — si falla no bloquea
-      try {
-        await this.notificar.ejecutar({
-          reunificacionId: resultado.reunificacion.id,
-        });
-      } catch (error) {
-        console.error('Error al enviar notificación:', (error as Error).message);
-      }
+      // ── La notificación por email ahora la maneja el processor de BullMQ ──
+      // ── al recibir el evento PLACA_REUNIFICADA (patrón Observer) ──
 
       return {
         reunificacionId: resultado.reunificacion.id,

@@ -6,6 +6,7 @@ import {
   HallazgoRepository,
   ReunificacionRepository,
   EventoDominioRepository,
+  EventPublisherPort,
 } from '../../domain/ports';
 
 export interface ConciliarDesdeEncargoInput {
@@ -29,6 +30,7 @@ export class ConciliarPlacaUseCase {
     private readonly hallazgoRepo: HallazgoRepository,
     private readonly reunificacionRepo: ReunificacionRepository,
     private readonly eventoRepo: EventoDominioRepository,
+    private readonly eventPublisher: EventPublisherPort,
   ) {}
 
   async desdeEncargo(input: ConciliarDesdeEncargoInput): Promise<ConciliacionResultado> {
@@ -84,6 +86,18 @@ export class ConciliarPlacaUseCase {
       placa,
     });
     await this.eventoRepo.guardar(evento);
+
+    // ── NUEVO: publicar evento a la cola ──
+    try {
+      await this.eventPublisher.publicar(TipoEventoDominio.PLACA_REUNIFICADA, {
+        reunificacionId: guardada.id,
+        encargoId,
+        hallazgoId,
+        placa,
+      });
+    } catch (error) {
+      console.error('Error publicando evento PLACA_REUNIFICADA:', (error as Error).message);
+    }
 
     return { reunificacion: guardada, conciliada: true };
   }

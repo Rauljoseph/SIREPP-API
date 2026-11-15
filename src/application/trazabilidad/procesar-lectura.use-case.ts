@@ -7,6 +7,7 @@ import {
   NotificacionRepository,
   EventoDominioRepository,
   MailSenderPort,
+  EventPublisherPort,
 } from '../../domain/ports';
 
 export interface ProcesarLecturaInput {
@@ -32,6 +33,7 @@ export class ProcesarLecturaUseCase {
     private readonly notificacionRepo: NotificacionRepository,
     private readonly eventoRepo: EventoDominioRepository,
     private readonly mailSender: MailSenderPort,
+    private readonly eventPublisher: EventPublisherPort,
   ) {}
 
   async ejecutar(input: ProcesarLecturaInput): Promise<ProcesarLecturaOutput> {
@@ -64,17 +66,32 @@ export class ProcesarLecturaUseCase {
     });
     await this.eventoRepo.guardar(eventoDominio);
 
+    // ── NUEVO: publicar evento a la cola (incluye flag notificar para el processor) ──
+    const superaUmbral = guardado.superaUmbral(this.UMBRAL_CONFIANZA);
+    try {
+      await this.eventPublisher.publicar(TipoEventoDominio.PLACA_LEIDA, {
+        eventoLecturaId: guardado.id,
+        placa: input.placa,
+        portico: input.portico,
+        nivelConfianza: input.nivelConfianza,
+        encargoId: encargo.id,
+        timestampLectura: input.timestampLectura.toISOString(),
+        notificar: superaUmbral,
+      });
+    } catch (error) {
+      console.error('Error publicando evento PLACA_LEIDA:', (error as Error).message);
+    }
+
     // Verificar umbral antes de notificar
-    if (!guardado.superaUmbral(this.UMBRAL_CONFIANZA)) {
+    if (!superaUmbral) {
       return {
         registrada: true,
         notificada: false,
         motivo: `Confianza ${input.nivelConfianza} bajo umbral ${this.UMBRAL_CONFIANZA}`,
-        eventoLectura: guardado,
       };
     }
 
-    // Notificar al denunciante (hasta 3 intentos automáticos)
+    // Notificar al propietario (como indicio, no como certeza)
     try {
       const notificacion = Notificacion.builder()
         .conId(uuid())
@@ -84,44 +101,18 @@ export class ProcesarLecturaUseCase {
 
       const notifGuardada = await this.notificacionRepo.guardar(notificacion);
 
-      let notificacionActual = notifGuardada;
-      for (let intento = 1; intento <= 3; intento++) {
-        try {
-          const resultado = await this.mailSender.enviar({
-            destinatario: encargo.denuncianteEmail,
-            asunto: 'SIREPP — Posible avistamiento de su placa patente',
-            cuerpo: this.componerCuerpo(input.placa, input.portico, input.timestampLectura),
-          });
+      const resultado = await this.mailSender.enviar({
+        destinatario: encargo.denuncianteEmail,
+        asunto: 'SIREPP — Posible avistamiento de su placa patente',
+        cuerpo: this.componerCuerpo(input.placa, input.portico, input.timestampLectura),
+      });
 
-          const enviada = notificacionActual.marcarEnviada(resultado.messageId);
-          await this.notificacionRepo.actualizar(enviada);
+      const enviada = notifGuardada.marcarEnviada(resultado.messageId);
+      await this.notificacionRepo.actualizar(enviada);
 
-          return { registrada: true, notificada: true, eventoLectura: guardado.marcarNotificado() };
-        } catch (error) {
-          const mensaje = error instanceof Error ? error.message : 'Error desconocido';
-          notificacionActual = notificacionActual.marcarFallida(mensaje);
-          notificacionActual = await this.notificacionRepo.actualizar(notificacionActual);
-
-          if (intento < 3) {
-            await new Promise((resolve) => setTimeout(resolve, intento * 1000));
-          }
-        }
-      }
-
-      // 3 intentos fallidos → queda como FALLIDA para reintento manual
-      return {
-        registrada: true,
-        notificada: false,
-        motivo: 'Error al enviar notificación tras 3 intentos',
-        eventoLectura: guardado,
-      };
+      return { registrada: true, notificada: true };
     } catch {
-      return {
-        registrada: true,
-        notificada: false,
-        motivo: 'Error al crear notificación',
-        eventoLectura: guardado,
-      };
+      return { registrada: true, notificada: false, motivo: 'Error al enviar notificación' };
     }
   }
 
