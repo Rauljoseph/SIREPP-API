@@ -38,8 +38,8 @@ const conditionalImports = eventsEnabled
   ],
   controllers: [AuthController],
   providers: [
-    // KeycloakStrategy,
-    // { provide: APP_GUARD, useClass: KeycloakGuard },
+    KeycloakStrategy,
+    { provide: APP_GUARD, useClass: KeycloakGuard },
     // Orden importa: el más específico primero, el catch-all al final
     {
       provide: APP_FILTER,
