@@ -22,4 +22,8 @@ export class ConsultarEncargoUseCase {
   async vigentePorPlaca(placa: string): Promise<Encargo | null> {
     return this.encargoRepo.buscarVigentePorPlaca(placa);
   }
+
+  async listarPorEstado(estado?: string): Promise<Encargo[]> {
+    return this.encargoRepo.listarPorEstado(estado);
+  }
 }

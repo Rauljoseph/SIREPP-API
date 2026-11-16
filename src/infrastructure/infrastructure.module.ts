@@ -20,7 +20,6 @@ import { UnidadMapper } from './persistence/mappers/unidad.mapper';
 import { UsuarioMapper } from './persistence/mappers/usuario.mapper';
 import { PlacaPublicaMapper } from './persistence/mappers/placa-publica.mapper';
 import { UNIDAD_REPOSITORY, USUARIO_REPOSITORY, EVENT_PUBLISHER, PLACA_PUBLICA_REPOSITORY } from '../domain/ports';
-import { ConsultarUnidadUseCase } from '../application';
 
 // Repositories
 import { EncargoPrismaRepository } from './persistence/encargo.prisma-repository';
@@ -85,6 +84,7 @@ import {
   ConsultarEstadoPlacaUseCase,
   PublicarPlacaPublicaUseCase,
   ConsultarPlacaPublicaUseCase,
+  ConsultarUnidadUseCase,
 } from '../application';
 
 // ── Feature flag ──

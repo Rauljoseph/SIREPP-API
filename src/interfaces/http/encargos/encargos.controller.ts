@@ -5,10 +5,11 @@ import {
   Patch,
   Param,
   Body,
+  Query,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import {
   RegistrarEncargoUseCase,
   AnularEncargoUseCase,
@@ -27,6 +28,15 @@ export class EncargosController {
     private readonly anularEncargo: AnularEncargoUseCase,
     private readonly consultarEncargo: ConsultarEncargoUseCase,
   ) {}
+
+  @Get()
+  @ApiOperation({ summary: 'Listar encargos con filtro opcional por estado' })
+  @ApiQuery({ name: 'estado', required: false, enum: ['VIGENTE', 'REUNIFICADO', 'CERRADO', 'ANULADO', 'EXPIRADO'] })
+  @ApiResponse({ status: 200, description: 'Lista de encargos' })
+  async listar(@Query('estado') estado?: string) {
+    const encargos = await this.consultarEncargo.listarPorEstado(estado);
+    return encargos.map((e) => this.mapearEncargo(e));
+  }
 
   @Post()
   @HttpCode(HttpStatus.CREATED)

@@ -60,4 +60,14 @@ export class EncargoPrismaRepository implements EncargoRepository {
     });
     return records.map((r) => this.mapper.toDomain(r));
   }
+
+  async listarPorEstado(estado?: string): Promise<Encargo[]> {
+    const where = estado ? { estado: estado as any } : {};
+    const results = await this.prisma.encargo.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+    return results.map((r) => this.mapper.toDomain(r));
+  }
 }

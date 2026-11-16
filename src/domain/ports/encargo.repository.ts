@@ -7,6 +7,7 @@ export interface EncargoRepository {
   buscarVigentePorPlaca(placa: string): Promise<Encargo | null>;
   actualizar(encargo: Encargo): Promise<Encargo>;
   buscarVigentesAnterioresA(fecha: Date): Promise<Encargo[]>;
+  listarPorEstado(estado?: string): Promise<Encargo[]>;
 }
 
 export const ENCARGO_REPOSITORY = Symbol('EncargoRepository');
