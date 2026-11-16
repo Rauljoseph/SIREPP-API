@@ -42,7 +42,19 @@ import { VehiculoRegistryMockAdapter } from './external/vehiculo-registry.mock-a
 // ── BullMQ: adapters de eventos (flag) ──
 import { BullMqEventPublisherAdapter } from './events/bullmq-event-publisher.adapter';
 import { NoopEventPublisherAdapter } from './events/noop-event-publisher.adapter';
-import { SireppEventosProcessor } from './events/sirepp-eventos.processor';
+import { SireppEventosProcessor, EVENTO_HANDLERS } from './events/sirepp-eventos.processor';
+
+// ── Strategy: handlers de eventos ──
+import {
+  EventoHandler,
+  PlacaReunificadaHandler,
+  PlacaLeidaHandler,
+  EncargoAnuladoHandler,
+  EncargoExpiradoHandler,
+  CasoCerradoHandler,
+  LogOnlyHandler,
+} from './events/handlers';
+import { TipoEventoDominio } from '../domain/enums';
 
 // Port tokens
 import {
@@ -199,6 +211,45 @@ const conditionalImports = eventsEnabled
   ? [BullModule.registerQueue({ name: 'sirepp-eventos' }), BullBoardConfigModule]
   : [];
 
+// ── Strategy: handlers de eventos (solo si BullMQ está habilitado) ──
+const eventHandlers = eventsEnabled
+  ? [
+    PlacaReunificadaHandler,
+    PlacaLeidaHandler,
+    EncargoAnuladoHandler,
+    EncargoExpiradoHandler,
+    CasoCerradoHandler,
+    // ── Map de estrategias: asocia cada tipo de evento con su handler ──
+    {
+      provide: EVENTO_HANDLERS,
+      useFactory: (
+        placaReunificada: PlacaReunificadaHandler,
+        placaLeida: PlacaLeidaHandler,
+        encargoAnulado: EncargoAnuladoHandler,
+        encargoExpirado: EncargoExpiradoHandler,
+        casoCerrado: CasoCerradoHandler,
+      ) => {
+        const handlers = new Map<TipoEventoDominio, EventoHandler>();
+        handlers.set(TipoEventoDominio.PLACA_REUNIFICADA, placaReunificada);
+        handlers.set(TipoEventoDominio.PLACA_LEIDA, placaLeida);
+        handlers.set(TipoEventoDominio.PLACA_ENCARGADA, new LogOnlyHandler('Placa encargada'));
+        handlers.set(TipoEventoDominio.PLACA_HALLADA, new LogOnlyHandler('Placa hallada'));
+        handlers.set(TipoEventoDominio.ENCARGO_ANULADO, encargoAnulado);
+        handlers.set(TipoEventoDominio.ENCARGO_EXPIRADO, encargoExpirado);
+        handlers.set(TipoEventoDominio.CASO_CERRADO, casoCerrado);
+        return handlers;
+      },
+      inject: [
+        PlacaReunificadaHandler,
+        PlacaLeidaHandler,
+        EncargoAnuladoHandler,
+        EncargoExpiradoHandler,
+        CasoCerradoHandler,
+      ],
+    },
+  ]
+  : [];
+
 // ── Processor solo si está habilitado ──
 const conditionalProviders = eventsEnabled
   ? [SireppEventosProcessor]
@@ -226,6 +277,8 @@ const conditionalProviders = eventsEnabled
     ...repositories,
     ...adapters,
     ...useCases,
+    // ── Strategy: handlers de eventos (solo si EVENTS_ENABLED=true) ──
+    ...eventHandlers,
     // BullMQ processor (solo si EVENTS_ENABLED=true)
     ...conditionalProviders,
     // Scheduler
