@@ -30,12 +30,26 @@ export class EncargosController {
   ) {}
 
   @Get()
-  @ApiOperation({ summary: 'Listar encargos con filtro opcional por estado' })
+  @ApiOperation({ summary: 'Listar encargos con filtro opcional por estado y paginación' })
   @ApiQuery({ name: 'estado', required: false, enum: ['VIGENTE', 'REUNIFICADO', 'CERRADO', 'ANULADO', 'EXPIRADO'] })
-  @ApiResponse({ status: 200, description: 'Lista de encargos' })
-  async listar(@Query('estado') estado?: string) {
-    const encargos = await this.consultarEncargo.listarPorEstado(estado);
-    return encargos.map((e) => this.mapearEncargo(e));
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Lista paginada de encargos' })
+  async listar(
+    @Query('estado') estado?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const p = Math.max(1, parseInt(page || '1', 10) || 1);
+    const l = Math.min(100, Math.max(1, parseInt(limit || '20', 10) || 20));
+    const result = await this.consultarEncargo.listarPorEstado(estado, p, l);
+    return {
+      data: result.data.map((e) => this.mapearEncargo(e)),
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+      totalPages: result.totalPages,
+    };
   }
 
   @Post()
@@ -43,7 +57,6 @@ export class EncargosController {
   @ApiOperation({ summary: 'Registrar un nuevo encargo de placa' })
   @ApiResponse({ status: 201, description: 'Encargo registrado exitosamente' })
   async crear(@Body() dto: CrearEncargoDto, @Funcionario() funcionario: FuncionarioAutenticado) {
-
 
     const resultado = await this.registrarEncargo.ejecutar({
       placa: dto.placa,
@@ -83,7 +96,6 @@ export class EncargosController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Anular un encargo vigente' })
   async anular(@Param('id') id: string, @Body() dto: AnularEncargoDto, @Funcionario() funcionario: FuncionarioAutenticado) {
-
     const encargo = await this.anularEncargo.ejecutar({
       encargoId: id,
       supervisorId: funcionario.id,

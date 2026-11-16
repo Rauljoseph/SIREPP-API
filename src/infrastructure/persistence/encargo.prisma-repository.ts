@@ -61,13 +61,23 @@ export class EncargoPrismaRepository implements EncargoRepository {
     return records.map((r) => this.mapper.toDomain(r));
   }
 
-  async listarPorEstado(estado?: string): Promise<Encargo[]> {
+  async listarPorEstado(estado?: string, page = 1, limit = 20): Promise<import('../../domain/ports').PaginatedResult<Encargo>> {
     const where = estado ? { estado: estado as any } : {};
-    const results = await this.prisma.encargo.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    });
-    return results.map((r) => this.mapper.toDomain(r));
+    const [results, total] = await Promise.all([
+      this.prisma.encargo.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.encargo.count({ where }),
+    ]);
+    return {
+      data: results.map((r) => this.mapper.toDomain(r)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 }

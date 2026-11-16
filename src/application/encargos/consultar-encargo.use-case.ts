@@ -1,5 +1,5 @@
 import { Encargo } from '../../domain/entities';
-import { EncargoRepository } from '../../domain/ports';
+import { EncargoRepository, type PaginatedResult } from '../../domain/ports';
 import { EncargoNoEncontradoException } from '../../domain/exceptions';
 
 export class ConsultarEncargoUseCase {
@@ -23,7 +23,7 @@ export class ConsultarEncargoUseCase {
     return this.encargoRepo.buscarVigentePorPlaca(placa);
   }
 
-  async listarPorEstado(estado?: string): Promise<Encargo[]> {
-    return this.encargoRepo.listarPorEstado(estado);
+  async listarPorEstado(estado?: string, page?: number, limit?: number): Promise<PaginatedResult<Encargo>> {
+    return this.encargoRepo.listarPorEstado(estado, page, limit);
   }
 }
