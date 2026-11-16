@@ -111,6 +111,21 @@ export class NotificacionBuilder {
     return this;
   }
 
+  paraAnulacion(): this {
+    this.tipo = TipoNotificacion.ANULACION;
+    return this;
+  }
+
+  paraExpiracion(): this {
+    this.tipo = TipoNotificacion.EXPIRACION;
+    return this;
+  }
+
+  paraEntrega(): this {
+    this.tipo = TipoNotificacion.ENTREGA;
+    return this;
+  }
+
   conDestinatario(email: string): this { this.destinatarioEmail = email; return this; }
   conEstado(estado: EstadoNotificacion): this { this.estado = estado; return this; }
   conMessageId(id: string): this { this.messageId = id; return this; }

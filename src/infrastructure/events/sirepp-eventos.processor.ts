@@ -50,11 +50,15 @@ export class SireppEventosProcessor extends WorkerHost {
         break;
 
       case TipoEventoDominio.ENCARGO_ANULADO:
-        this.logger.log(`Encargo ${job.data.encargoId} anulado — motivo: ${job.data.motivo}`);
+        await this.onEncargoAnulado(job.data);
+        break;
+
+      case TipoEventoDominio.ENCARGO_EXPIRADO:
+        await this.onEncargoExpirado(job.data);
         break;
 
       case TipoEventoDominio.CASO_CERRADO:
-        this.logger.log(`Caso cerrado — reunificación ${job.data.reunificacionId}`);
+        await this.onCasoCerrado(job.data);
         break;
 
       default:
@@ -159,5 +163,137 @@ export class SireppEventosProcessor extends WorkerHost {
     await this.notificacionRepo.actualizar(enviada);
 
     this.logger.log(`Notificación de lectura enviada a ${encargo.denuncianteEmail}`);
+  }
+
+  private async onEncargoAnulado(data: Record<string, unknown>): Promise<void> {
+    const encargoId = data.encargoId as string;
+    const placa = data.placa as string;
+    const motivo = data.motivo as string;
+
+    const encargo = await this.encargoRepo.buscarPorId(encargoId);
+    if (!encargo) {
+      this.logger.warn(`Encargo ${encargoId} no encontrado para notificación de anulación`);
+      return;
+    }
+
+    const notificacion = Notificacion.builder()
+      .conId(uuid())
+      .paraAnulacion()
+      .conDestinatario(encargo.denuncianteEmail)
+      .build();
+
+    const guardada = await this.notificacionRepo.guardar(notificacion);
+
+    const resultado = await this.mailSender.enviar({
+      destinatario: encargo.denuncianteEmail,
+      asunto: 'SIREPP — Su encargo de placa patente ha sido anulado',
+      cuerpo: [
+        `Estimado/a propietario/a:`,
+        ``,
+        `Le informamos que el encargo de búsqueda para su placa patente ${placa} `,
+        `ha sido anulado.`,
+        ``,
+        `Motivo: ${motivo}`,
+        ``,
+        `Si usted no solicitó esta anulación o considera que es un error, `,
+        `le invitamos a acercarse a la unidad policial más cercana para `,
+        `presentar un nuevo encargo.`,
+        ``,
+        `SIREPP — Sistema Integrado de Registro y Reunificación de Placas Patente`,
+      ].join('\n'),
+    });
+
+    const enviada = guardada.marcarEnviada(resultado.messageId);
+    await this.notificacionRepo.actualizar(enviada);
+
+    this.logger.log(`Notificación de anulación enviada a ${encargo.denuncianteEmail} — encargo ${encargoId}`);
+  }
+
+
+  private async onEncargoExpirado(data: Record<string, unknown>): Promise<void> {
+    const encargoId = data.encargoId as string;
+    const placa = data.placa as string;
+
+    const encargo = await this.encargoRepo.buscarPorId(encargoId);
+    if (!encargo) {
+      this.logger.warn(`Encargo ${encargoId} no encontrado para notificación de expiración`);
+      return;
+    }
+
+    const notificacion = Notificacion.builder()
+      .conId(uuid())
+      .paraExpiracion()
+      .conDestinatario(encargo.denuncianteEmail)
+      .build();
+
+    const guardada = await this.notificacionRepo.guardar(notificacion);
+
+    const resultado = await this.mailSender.enviar({
+      destinatario: encargo.denuncianteEmail,
+      asunto: 'SIREPP — Su encargo de placa patente ha expirado',
+      cuerpo: [
+        `Estimado/a propietario/a:`,
+        ``,
+        `Le informamos que el encargo de búsqueda para su placa patente ${placa} `,
+        `ha expirado después de 6 meses sin resultados positivos.`,
+        ``,
+        `El encargo ha sido cerrado automáticamente conforme al plazo `,
+        `establecido por el sistema.`,
+        ``,
+        `Si desea continuar con la búsqueda, puede registrar un nuevo `,
+        `encargo acercándose a la unidad policial más cercana.`,
+        ``,
+        `SIREPP — Sistema Integrado de Registro y Reunificación de Placas Patente`,
+      ].join('\n'),
+    });
+
+    const enviada = guardada.marcarEnviada(resultado.messageId);
+    await this.notificacionRepo.actualizar(enviada);
+
+    this.logger.log(`Notificación de expiración enviada a ${encargo.denuncianteEmail} — encargo ${encargoId}`);
+  }
+
+
+  private async onCasoCerrado(data: Record<string, unknown>): Promise<void> {
+    const reunificacionId = data.reunificacionId as string;
+    const encargoId = data.encargoId as string;
+
+    const encargo = await this.encargoRepo.buscarPorId(encargoId);
+    if (!encargo) {
+      this.logger.warn(`Encargo ${encargoId} no encontrado para notificación de entrega`);
+      return;
+    }
+
+    const notificacion = Notificacion.builder()
+      .conId(uuid())
+      .paraEntrega()
+      .conDestinatario(encargo.denuncianteEmail)
+      .build();
+
+    const guardada = await this.notificacionRepo.guardar(notificacion);
+
+    const resultado = await this.mailSender.enviar({
+      destinatario: encargo.denuncianteEmail,
+      asunto: 'SIREPP — Su placa patente ha sido entregada exitosamente',
+      cuerpo: [
+        `Estimado/a propietario/a:`,
+        ``,
+        `Le confirmamos que su placa patente ${encargo.placa} ha sido `,
+        `entregada exitosamente. El caso ha sido cerrado.`,
+        ``,
+        `Código de seguimiento: ${reunificacionId}`,
+        ``,
+        `Agradecemos su colaboración con el sistema. Si en el futuro `,
+        `requiere registrar un nuevo encargo, no dude en acercarse a `,
+        `la unidad policial más cercana.`,
+        ``,
+        `SIREPP — Sistema Integrado de Registro y Reunificación de Placas Patente`,
+      ].join('\n'),
+    });
+
+    const enviada = guardada.marcarEnviada(resultado.messageId);
+    await this.notificacionRepo.actualizar(enviada);
+
+    this.logger.log(`Notificación de entrega enviada a ${encargo.denuncianteEmail} — reunificación ${reunificacionId}`);
   }
 }
