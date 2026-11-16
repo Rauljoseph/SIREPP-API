@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { Reunificacion, EventoDominio } from '../../domain/entities';
-import { EstadoReunificacion, TipoEventoDominio } from '../../domain/enums';
+import { EstadoReunificacion, TipoEventoDominio, EstadoPlacaPublica } from '../../domain/enums';
 import {
   EncargoRepository,
   HallazgoRepository,
@@ -8,6 +8,7 @@ import {
   EventoDominioRepository,
   EventPublisherPort,
 } from '../../domain/ports';
+import { PublicarPlacaPublicaUseCase } from '../placa-publica/publicar-placa-publica.use-case';
 
 export interface ConciliarDesdeEncargoInput {
   encargoId: string;
@@ -31,6 +32,7 @@ export class ConciliarPlacaUseCase {
     private readonly reunificacionRepo: ReunificacionRepository,
     private readonly eventoRepo: EventoDominioRepository,
     private readonly eventPublisher: EventPublisherPort,
+    private readonly publicarPlaca: PublicarPlacaPublicaUseCase, // ← NUEVO
   ) {}
 
   async desdeEncargo(input: ConciliarDesdeEncargoInput): Promise<ConciliacionResultado> {
@@ -87,7 +89,7 @@ export class ConciliarPlacaUseCase {
     });
     await this.eventoRepo.guardar(evento);
 
-    // ── NUEVO: publicar evento a la cola ──
+    // Publicar evento a la cola
     try {
       await this.eventPublisher.publicar(TipoEventoDominio.PLACA_REUNIFICADA, {
         reunificacionId: guardada.id,
@@ -97,6 +99,19 @@ export class ConciliarPlacaUseCase {
       });
     } catch (error) {
       console.error('Error publicando evento PLACA_REUNIFICADA:', (error as Error).message);
+    }
+
+    // ══ NUEVO: Publicar a tabla pública con estado DISPONIBLE_PARA_RETIRO ══
+    try {
+      const hallazgo = await this.hallazgoRepo.buscarPorId(hallazgoId);
+      await this.publicarPlaca.ejecutar({
+        placa,
+        estado: EstadoPlacaPublica.DISPONIBLE_PARA_RETIRO,
+        unidadId: hallazgo?.unidadId ?? encargo?.unidadId ?? '',
+        fechaIngreso: new Date(),
+      });
+    } catch (error) {
+      console.error('Error publicando placa a tabla pública:', (error as Error).message);
     }
 
     return { reunificacion: guardada, conciliada: true };

@@ -1,12 +1,14 @@
 import { Reunificacion, EventoDominio } from '../../domain/entities';
-import { TipoEventoDominio } from '../../domain/enums';
+import { TipoEventoDominio, EstadoPlacaPublica } from '../../domain/enums';
 import {
   ReunificacionRepository,
   EncargoRepository,
   EventoDominioRepository,
-  EventPublisherPort, UsuarioRepository,
+  EventPublisherPort,
+  UsuarioRepository,
 } from '../../domain/ports';
 import { AccesoDenegadoException } from '../../domain/exceptions';
+import { PublicarPlacaPublicaUseCase } from '../placa-publica/publicar-placa-publica.use-case';
 
 export interface CerrarCasoInput {
   reunificacionId: string;
@@ -21,7 +23,8 @@ export class CerrarCasoUseCase {
     private readonly encargoRepo: EncargoRepository,
     private readonly eventoRepo: EventoDominioRepository,
     private readonly usuarioRepo: UsuarioRepository,
-    private readonly eventPublisher: EventPublisherPort
+    private readonly eventPublisher: EventPublisherPort,
+    private readonly publicarPlaca: PublicarPlacaPublicaUseCase, // ← NUEVO
   ) {}
 
   async ejecutar(input: CerrarCasoInput): Promise<Reunificacion> {
@@ -59,7 +62,7 @@ export class CerrarCasoUseCase {
     });
     await this.eventoRepo.guardar(evento);
 
-    // ── NUEVO: publicar evento a la cola ──
+    // Publicar evento a la cola
     try {
       await this.eventPublisher.publicar(TipoEventoDominio.CASO_CERRADO, {
         reunificacionId: actualizada.id,
@@ -68,6 +71,18 @@ export class CerrarCasoUseCase {
       });
     } catch (error) {
       console.error('Error publicando evento CASO_CERRADO:', (error as Error).message);
+    }
+
+    // ══ NUEVO: Publicar a tabla pública con estado ENTREGADA ══
+    try {
+      await this.publicarPlaca.ejecutar({
+        placa: encargo?.placa ?? '',
+        estado: EstadoPlacaPublica.ENTREGADA,
+        unidadId: encargo?.unidadId ?? '',
+        fechaIngreso: new Date(),
+      });
+    } catch (error) {
+      console.error('Error publicando placa a tabla pública:', (error as Error).message);
     }
 
     return actualizada;

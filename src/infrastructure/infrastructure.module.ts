@@ -134,9 +134,9 @@ const useCases = [
   },
   {
     provide: ConciliarPlacaUseCase,
-    useFactory: (encargoRepo, hallazgoRepo, reunificacionRepo, eventoRepo, eventPublisher) =>
-      new ConciliarPlacaUseCase(encargoRepo, hallazgoRepo, reunificacionRepo, eventoRepo, eventPublisher),
-    inject: [ENCARGO_REPOSITORY, HALLAZGO_REPOSITORY, REUNIFICACION_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, EVENT_PUBLISHER],
+    useFactory: (encargoRepo, hallazgoRepo, reunificacionRepo, eventoRepo, eventPublisher, publicarPlaca) =>
+      new ConciliarPlacaUseCase(encargoRepo, hallazgoRepo, reunificacionRepo, eventoRepo, eventPublisher, publicarPlaca),
+    inject: [ENCARGO_REPOSITORY, HALLAZGO_REPOSITORY, REUNIFICACION_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, EVENT_PUBLISHER, PublicarPlacaPublicaUseCase],
   },
   {
     provide: EnviarNotificacionReunificacionUseCase,
@@ -158,9 +158,9 @@ const useCases = [
   },
   {
     provide: CerrarCasoUseCase,
-    useFactory: (reunificacionRepo, encargoRepo, eventoRepo,usuarioRepo,  eventPublisher) =>
-      new CerrarCasoUseCase(reunificacionRepo, encargoRepo, eventoRepo, usuarioRepo, eventPublisher),
-    inject: [REUNIFICACION_REPOSITORY, ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY,USUARIO_REPOSITORY, EVENT_PUBLISHER],
+    useFactory: (reunificacionRepo, encargoRepo, eventoRepo, usuarioRepo, eventPublisher, publicarPlaca) =>
+      new CerrarCasoUseCase(reunificacionRepo, encargoRepo, eventoRepo, usuarioRepo, eventPublisher, publicarPlaca),
+    inject: [REUNIFICACION_REPOSITORY, ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY, USUARIO_REPOSITORY, EVENT_PUBLISHER, PublicarPlacaPublicaUseCase],
   },
   {
     provide: ConsultarEstadoPlacaUseCase,
