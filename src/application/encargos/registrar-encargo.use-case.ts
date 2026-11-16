@@ -1,6 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import { Encargo, EventoDominio } from '../../domain/entities';
-import { TipoEvento, TipoEventoDominio } from '../../domain/enums';
+import { TipoEvento, TipoEventoDominio, EstadoPlacaPublica } from '../../domain/enums';
 import {
   EncargoRepository,
   EventoDominioRepository,
@@ -12,6 +12,7 @@ import {
 } from '../../domain/ports';
 import { PlacaInvalidaException, AccesoDenegadoException } from '../../domain/exceptions';
 import { ConciliarPlacaUseCase } from '../conciliacion/conciliar-placa.use-case';
+import { PublicarPlacaPublicaUseCase } from '../placa-publica/publicar-placa-publica.use-case';
 
 export interface RegistrarEncargoInput {
   placa: string;
@@ -63,6 +64,7 @@ export class RegistrarEncargoUseCase {
     private readonly unidadRepo: UnidadRepository,
     private readonly usuarioRepo: UsuarioRepository,
     private readonly eventPublisher: EventPublisherPort,
+    private readonly publicarPlaca: PublicarPlacaPublicaUseCase, // ← NUEVO
   ) {}
 
   async ejecutar(input: RegistrarEncargoInput): Promise<RegistrarEncargoOutput> {
@@ -112,6 +114,19 @@ export class RegistrarEncargoUseCase {
       });
     } catch (error) {
       console.error('Error publicando evento PLACA_ENCARGADA:', (error as Error).message);
+    }
+
+    // ══ NUEVO: Publicar a tabla pública con estado EN_BUSQUEDA ══
+    try {
+      await this.publicarPlaca.ejecutar({
+        placa: encargoGuardado.placa,
+        estado: EstadoPlacaPublica.EN_BUSQUEDA,
+        unidadId: encargoGuardado.unidadId,
+        fechaIngreso: new Date(),
+      });
+    } catch (error) {
+      // No debe fallar el flujo principal si la publicación pública falla
+      console.error('Error publicando placa a tabla pública:', (error as Error).message);
     }
 
     // 6. Intentar conciliación automática (síncrona — el usuario necesita el resultado)

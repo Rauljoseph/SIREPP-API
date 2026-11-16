@@ -18,7 +18,8 @@ import { EventoLecturaMapper } from './persistence/mappers/evento-lectura.mapper
 import { EventoDominioMapper } from './persistence/mappers/evento-dominio.mapper';
 import { UnidadMapper } from './persistence/mappers/unidad.mapper';
 import { UsuarioMapper } from './persistence/mappers/usuario.mapper';
-import { UNIDAD_REPOSITORY, USUARIO_REPOSITORY, EVENT_PUBLISHER } from '../domain/ports';
+import { PlacaPublicaMapper } from './persistence/mappers/placa-publica.mapper';
+import { UNIDAD_REPOSITORY, USUARIO_REPOSITORY, EVENT_PUBLISHER, PLACA_PUBLICA_REPOSITORY } from '../domain/ports';
 import { ConsultarUnidadUseCase } from '../application';
 
 // Repositories
@@ -30,6 +31,7 @@ import { EventoLecturaPrismaRepository } from './persistence/evento-lectura.pris
 import { EventoDominioPrismaRepository } from './persistence/evento-dominio.prisma-repository';
 import { UnidadPrismaRepository } from './persistence/unidad.prisma-repository';
 import { UsuarioPrismaRepository } from './persistence/usuario.prisma.repository';
+import { PlacaPublicaPrismaRepository } from './persistence/placa-publica.prisma-repository';
 import { ExpirarEncargosUseCase } from '../application';
 import { EncargoExpirationService } from './scheduler/encargo-expiration-service';
 
@@ -52,7 +54,6 @@ import {
   EncargoAnuladoHandler,
   EncargoExpiradoHandler,
   CasoCerradoHandler,
-  LogOnlyHandler,
 } from './events/handlers';
 import { TipoEventoDominio } from '../domain/enums';
 
@@ -82,6 +83,8 @@ import {
   ProcesarLecturaUseCase,
   CerrarCasoUseCase,
   ConsultarEstadoPlacaUseCase,
+  PublicarPlacaPublicaUseCase,
+  ConsultarPlacaPublicaUseCase,
 } from '../application';
 
 // ── Feature flag ──
@@ -96,6 +99,7 @@ const repositories = [
   { provide: EVENTO_DOMINIO_REPOSITORY, useClass: EventoDominioPrismaRepository },
   { provide: UNIDAD_REPOSITORY, useClass: UnidadPrismaRepository },
   { provide: USUARIO_REPOSITORY, useClass: UsuarioPrismaRepository },
+  { provide: PLACA_PUBLICA_REPOSITORY, useClass: PlacaPublicaPrismaRepository },
 ];
 
 const adapters = [
@@ -169,12 +173,11 @@ const useCases = [
     useFactory: (unidadRepo) => new ConsultarUnidadUseCase(unidadRepo),
     inject: [UNIDAD_REPOSITORY],
   },
-  // ── Refactorizado: sin EnviarNotificacionReunificacionUseCase ──
-  // La notificación ahora la maneja el processor de BullMQ (patrón Observer)
+  // ── Refactorizado: ahora inyecta PublicarPlacaPublicaUseCase para publicar a tabla pública ──
   {
     provide: RegistrarEncargoUseCase,
-    useFactory: (encargoRepo, eventoRepo, vehiculoRegistry, conciliar, hallazgoRepo, unidadRepo, usuarioRepo, eventPublisher) =>
-      new RegistrarEncargoUseCase(encargoRepo, eventoRepo, vehiculoRegistry, conciliar, hallazgoRepo, unidadRepo, usuarioRepo, eventPublisher),
+    useFactory: (encargoRepo, eventoRepo, vehiculoRegistry, conciliar, hallazgoRepo, unidadRepo, usuarioRepo, eventPublisher, publicarPlaca) =>
+      new RegistrarEncargoUseCase(encargoRepo, eventoRepo, vehiculoRegistry, conciliar, hallazgoRepo, unidadRepo, usuarioRepo, eventPublisher, publicarPlaca),
     inject: [
       ENCARGO_REPOSITORY,
       EVENTO_DOMINIO_REPOSITORY,
@@ -184,18 +187,20 @@ const useCases = [
       UNIDAD_REPOSITORY,
       USUARIO_REPOSITORY,
       EVENT_PUBLISHER,
+      PublicarPlacaPublicaUseCase,
     ],
   },
-  // ── Refactorizado: sin EnviarNotificacionReunificacionUseCase ──
+  // ── Refactorizado: ahora inyecta PublicarPlacaPublicaUseCase para publicar a tabla pública ──
   {
     provide: RegistrarHallazgoUseCase,
-    useFactory: (hallazgoRepo, eventoRepo, conciliar, eventPublisher) =>
-      new RegistrarHallazgoUseCase(hallazgoRepo, eventoRepo, conciliar, eventPublisher),
+    useFactory: (hallazgoRepo, eventoRepo, conciliar, eventPublisher, publicarPlaca) =>
+      new RegistrarHallazgoUseCase(hallazgoRepo, eventoRepo, conciliar, eventPublisher, publicarPlaca),
     inject: [
       HALLAZGO_REPOSITORY,
       EVENTO_DOMINIO_REPOSITORY,
       ConciliarPlacaUseCase,
       EVENT_PUBLISHER,
+      PublicarPlacaPublicaUseCase,
     ],
   },
   {
@@ -204,12 +209,20 @@ const useCases = [
       new ExpirarEncargosUseCase(encargoRepo, eventoRepo),
     inject: [ENCARGO_REPOSITORY, EVENTO_DOMINIO_REPOSITORY],
   },
+  // ── Placa pública: use cases ──
+  {
+    provide: PublicarPlacaPublicaUseCase,
+    useFactory: (placaPublicaRepo, unidadRepo) =>
+      new PublicarPlacaPublicaUseCase(placaPublicaRepo, unidadRepo),
+    inject: [PLACA_PUBLICA_REPOSITORY, UNIDAD_REPOSITORY],
+  },
+  {
+    provide: ConsultarPlacaPublicaUseCase,
+    useFactory: (placaPublicaRepo) =>
+      new ConsultarPlacaPublicaUseCase(placaPublicaRepo),
+    inject: [PLACA_PUBLICA_REPOSITORY],
+  },
 ];
-
-// ── Imports condicionales: registrar cola BullMQ solo si está habilitado ──
-const conditionalImports = eventsEnabled
-  ? [BullModule.registerQueue({ name: 'sirepp-eventos' }), BullBoardConfigModule]
-  : [];
 
 // ── Strategy: handlers de eventos (solo si BullMQ está habilitado) ──
 const eventHandlers = eventsEnabled
@@ -232,8 +245,6 @@ const eventHandlers = eventsEnabled
         const handlers = new Map<TipoEventoDominio, EventoHandler>();
         handlers.set(TipoEventoDominio.PLACA_REUNIFICADA, placaReunificada);
         handlers.set(TipoEventoDominio.PLACA_LEIDA, placaLeida);
-        handlers.set(TipoEventoDominio.PLACA_ENCARGADA, new LogOnlyHandler('Placa encargada'));
-        handlers.set(TipoEventoDominio.PLACA_HALLADA, new LogOnlyHandler('Placa hallada'));
         handlers.set(TipoEventoDominio.ENCARGO_ANULADO, encargoAnulado);
         handlers.set(TipoEventoDominio.ENCARGO_EXPIRADO, encargoExpirado);
         handlers.set(TipoEventoDominio.CASO_CERRADO, casoCerrado);
@@ -248,6 +259,11 @@ const eventHandlers = eventsEnabled
       ],
     },
   ]
+  : [];
+
+// ── Imports condicionales: registrar cola BullMQ solo si está habilitado ──
+const conditionalImports = eventsEnabled
+  ? [BullModule.registerQueue({ name: 'sirepp-eventos' }), BullBoardConfigModule]
   : [];
 
 // ── Processor solo si está habilitado ──
@@ -273,6 +289,7 @@ const conditionalProviders = eventsEnabled
     EventoDominioMapper,
     UnidadMapper,
     UsuarioMapper,
+    PlacaPublicaMapper,
     // Repositories, adapters y use cases
     ...repositories,
     ...adapters,

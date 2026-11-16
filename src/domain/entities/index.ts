@@ -7,3 +7,4 @@ export * from './notificacion.entity';
 export * from './evento-lectura.entity';
 export * from './evento-dominio.entity';
 export * from './audit-log.entity';
+export * from './placa-publica.entity';

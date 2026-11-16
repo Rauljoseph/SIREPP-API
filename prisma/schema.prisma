@@ -70,6 +70,13 @@ enum TipoEventoDominio {
   ENCARGO_EXPIRADO
 }
 
+enum EstadoPlacaPublica {
+  EN_BUSQUEDA
+  EN_CUSTODIA
+  DISPONIBLE_PARA_RETIRO
+  ENTREGADA
+}
+
 model Unidad {
   id               String      @id @default(uuid()) @db.Uuid
   nombre           String      @db.VarChar(200)
@@ -236,6 +243,32 @@ model EventoDominio {
 
   @@index([procesado, createdAt])
   @@map("evento_dominio")
+}
+
+// ══ NUEVO: Tabla pública para consulta ciudadana ══
+// No tiene relación con las tablas internas de Carabineros.
+// Se llena por upsert cuando se crea un encargo (EN_BUSQUEDA)
+// o cuando se registra un hallazgo (EN_CUSTODIA).
+model PlacaPublica {
+  id               String              @id @default(uuid()) @db.Uuid
+  placa            String              @db.VarChar(10)
+  estado           EstadoPlacaPublica
+  unidadNombre     String              @map("unidad_nombre") @db.VarChar(200)
+  unidadDireccion  String              @map("unidad_direccion") @db.VarChar(400)
+  unidadComuna     String              @map("unidad_comuna") @db.VarChar(100)
+  unidadRegion     String              @map("unidad_region") @db.VarChar(100)
+  unidadLatitud    Float?              @map("unidad_latitud")
+  unidadLongitud   Float?              @map("unidad_longitud")
+  horarioAtencion  String?             @map("horario_atencion") @db.VarChar(200)
+  telefonoUnidad   String?             @map("telefono_unidad") @db.VarChar(20)
+  requisitosRetiro String?             @map("requisitos_retiro") @db.Text
+  fechaIngreso     DateTime            @map("fecha_ingreso")
+  fechaPublicacion DateTime            @default(now()) @map("fecha_publicacion")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  @@unique([placa])
+  @@index([estado])
+  @@map("placa_publica")
 }
 
 model AuditLog {

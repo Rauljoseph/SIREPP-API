@@ -9,6 +9,7 @@ import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { AdminModule } from './admin/admin.module';
 import { AuditModule } from './audit/audit.module';
 import { EventoDominioModule } from './evento_dominio/evento_dominio.module';
+import { PublicoModule } from './publico/publico.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { EventoDominioModule } from './evento_dominio/evento_dominio.module';
     AdminModule,
     AuditModule,
     EventoDominioModule,
+    PublicoModule,
   ],
 })
 export class InterfacesModule {}

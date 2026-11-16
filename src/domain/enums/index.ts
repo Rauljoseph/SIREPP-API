@@ -7,3 +7,4 @@ export * from './estado-reunificacion.enum';
 export * from './tipo-notificacion.enum';
 export * from './estado-notificacion.enum';
 export * from './tipo-evento-dominio.enum';
+export * from './estado-placa-publica.enum';

@@ -1,12 +1,16 @@
+// src/application/hallazgos/registrar-hallazgo.use-case.ts
+// ═══ REEMPLAZAR el archivo actual ═══
+
 import { v4 as uuid } from 'uuid';
 import { Hallazgo, EventoDominio } from '../../domain/entities';
-import { EstadoFisico, TipoEventoDominio } from '../../domain/enums';
+import { EstadoFisico, TipoEventoDominio, EstadoPlacaPublica } from '../../domain/enums';
 import {
   HallazgoRepository,
   EventoDominioRepository,
   EventPublisherPort,
 } from '../../domain/ports';
 import { ConciliarPlacaUseCase } from '../conciliacion/conciliar-placa.use-case';
+import { PublicarPlacaPublicaUseCase } from '../placa-publica/publicar-placa-publica.use-case';
 
 export interface RegistrarHallazgoInput {
   placa: string;
@@ -30,6 +34,7 @@ export class RegistrarHallazgoUseCase {
     private readonly eventoRepo: EventoDominioRepository,
     private readonly conciliar: ConciliarPlacaUseCase,
     private readonly eventPublisher: EventPublisherPort,
+    private readonly publicarPlaca: PublicarPlacaPublicaUseCase, // ← NUEVO
   ) {}
 
   async ejecutar(input: RegistrarHallazgoInput): Promise<RegistrarHallazgoOutput> {
@@ -64,6 +69,19 @@ export class RegistrarHallazgoUseCase {
       });
     } catch (error) {
       console.error('Error publicando evento PLACA_HALLADA:', (error as Error).message);
+    }
+
+    // ══ NUEVO: Publicar a tabla pública con estado EN_CUSTODIA ══
+    try {
+      await this.publicarPlaca.ejecutar({
+        placa: guardado.placa,
+        estado: EstadoPlacaPublica.EN_CUSTODIA,
+        unidadId: guardado.unidadId,
+        fechaIngreso: new Date(),
+      });
+    } catch (error) {
+      // No debe fallar el flujo principal si la publicación pública falla
+      console.error('Error publicando placa a tabla pública:', (error as Error).message);
     }
 
     const conciliacion = await this.intentarConciliacion(guardado);
