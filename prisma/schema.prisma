@@ -50,8 +50,10 @@ enum EstadoReunificacion {
 enum TipoNotificacion {
   REUNIFICACION
   LECTURA_PORTICO
+  ANULACION
+  EXPIRACION
+  ENTREGA
 }
-
 enum EstadoNotificacion {
   PENDIENTE
   ENVIADA
